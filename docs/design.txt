@@ -1,0 +1,125 @@
+Pixel Planet: Technical Design Document
+
+1. Vision & Scope
+
+Pixel Planet is a highly scalable, modular, programmable cellular automata sandbox. Users can define custom pixels (entities) with unique properties and behavior rules using a visual, node-based (Scratch-like) scripting interface. The goal is to allow emergent, complex ecosystems (weather cycles, simple organisms, geological formations) to arise from simple, user-defined local and global rules.
+
+2. System Architecture
+
+To handle the massive processing overhead of running complex logic on potentially millions of pixels, the application requires a strict decoupled architecture.
+
+Backend / Physics Engine (The "Core"): Written in Rust or C++ and compiled to WebAssembly (WASM). WASM runs at near-native speeds inside the browser. It handles the grid, memory management, rule evaluation, and updating pixel states.
+
+Frontend / UI (The "Shell"): Written in HTML/CSS/TypeScript (likely using a framework like React or Vue). It handles the Canvas rendering (via WebGL for speed), the Visual Node Editor, UI state, and communicating with the WASM core.
+
+Data Serialization: Rules created in the UI are compiled into a strict JSON Abstract Syntax Tree (AST) and passed to the WASM engine.
+
+3. The Pixel Entity System (Properties)
+
+Instead of hardcoding "Sand" or "Water," every pixel is an instance of an Entity Class. Users define an Entity by assigning properties.
+
+Base Properties:
+
+ID: Unique integer identifier.
+
+Name: String (e.g., "Fire").
+
+Color/Texture: Hex code or simple noise pattern.
+
+Density/Weight: Float (determines what sinks/floats globally).
+
+States/Variables: A dictionary of user-defined variables (e.g., lifetime: 60, energy: 100, isBouyant: true).
+
+4. The Rule Engine (The Logic Sandbox)
+
+Rules are built using a visual interface but compiled into an AST. Rules are evaluated hierarchically: Global Rules (apply to all pixels matching a condition) and Entity Rules (apply only to specific pixel types).
+
+4.1. Anatomy of a Rule
+
+A rule consists of three blocks: [TRIGGER] + [CONDITIONS] -> [ACTIONS]
+
+A. Triggers (When to check)
+
+OnTick: Evaluates every single frame.
+
+OnRandomTick: Evaluates on a random interval (e.g., 1-3 seconds).
+
+OnSpawn / OnDeath: Evaluates only when the pixel is created/destroyed.
+
+OnCollision: Evaluates when moved into a new pixel.
+
+B. Conditions (Boolean Logic)
+
+Conditions can be nested using AND, OR, NOT.
+
+NeighborCheck(Direction/Radius, EntityType/Tag): e.g., "Touching Water Above".
+
+PropertyCheck(Property, Operator, Value): e.g., "Lifetime < 10".
+
+Chance(Percentage): e.g., "50% chance".
+
+C. Actions (What happens)
+
+Move(Direction, Distance): e.g., Move UP 1.
+
+Transform(EntityType): Turn into a different pixel.
+
+Spawn(EntityType, Direction, Amount): Create a new pixel nearby.
+
+Destroy(): Delete self.
+
+ModifyProperty(Property, MathOperator, Value): e.g., "Lifetime = Lifetime - 1".
+
+4.2. Example Rule Translation
+
+User Intent: "If touching water pixel above AND buoyant, THEN move up UNTIL NOT touching water pixel above."
+AST JSON (Passed to WASM):
+
+{
+  "trigger": "OnTick",
+  "conditions": {
+    "operator": "AND",
+    "checks": [
+      { "type": "NeighborCheck", "dir": "top", "target": "Water" },
+      { "type": "PropertyCheck", "prop": "isBouyant", "eval": "==", "val": true }
+    ]
+  },
+  "actions": [
+    { "type": "Swap", "dir": "top" }
+  ]
+}
+
+
+5. Performance & Optimization Strategies
+
+To support a massive canvas (e.g., 2000x2000 = 4 million pixels), the engine must use advanced optimizations:
+
+Spatial Partitioning (Chunking): The canvas is divided into 32x32 chunks. If a chunk and its neighbors had no changes in the last tick, the chunk goes to "Sleep" and is skipped during rule evaluation.
+
+Multithreading: WASM supports Web Workers. The active chunks are divided among available CPU threads (e.g., 4 threads handle 25% of the active canvas each).
+
+Bitwise Operations: Pixel data should be packed into 32-bit or 64-bit integers (e.g., 8 bits for ID, 8 bits for State, 16 bits for variables) to ensure CPU cache efficiency.
+
+6. Coding Guidelines & File Structure
+
+File Structure Strategy
+
+/pixel-planet
+  /engine           # C++ or Rust code (Compiles to WASM)
+    /src
+      /core         # Memory, Grid, Chunks
+      /logic        # Rule parser, AST evaluator
+      /math         # RNG, Vectors
+  /ui               # Frontend web app (React/TypeScript)
+    /components     # Canvas, Menus
+    /rule-builder   # Visual node editor (Blockly or custom)
+  /shared           # TypeScript interfaces & Rust structs (JSON schemas)
+
+
+Core Principles
+
+Data-Oriented Design (DOD): In the C++/Rust engine, organize data for the CPU cache. Use Structs of Arrays (SoA) or flat arrays rather than Object-Oriented deep classes.
+
+Agnostic Engine: The backend should never know what "Water" or "Fire" is. It only knows IDs and Rules. All logic is injected at runtime.
+
+Deterministic RNG: Use a seeded random number generator. This ensures that if you share a save file, the simulation plays out exactly the same way for your friend.

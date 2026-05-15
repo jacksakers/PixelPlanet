@@ -1,0 +1,69 @@
+Pixel Planet: Phased Implementation Plan
+
+Building a Turing-complete physics engine is a marathon. To avoid getting overwhelmed by the sheer number of variables, we must build this in strict, testable phases.
+
+Phase 1: The High-Performance Foundation
+
+Goal: Prove the architecture works. Establish the bridge between the UI and the compiled backend.
+
+Setup the Environment: Initialize a Rust (or C++) project and configure WASM compilation (e.g., using wasm-pack). Initialize a React/TypeScript frontend.
+
+The Memory Grid: Create a flat 1D array in WASM to represent a 2D grid (e.g., 500x500).
+
+Render Loop: Pass a pointer of the WASM array to JavaScript, and render it to an HTML5 Canvas using the ImageData API or basic WebGL.
+
+Hardcoded Test: Implement a simple "falling sand" algorithm natively in the WASM code just to prove rendering at 60FPS works.
+
+Phase 2: The Data-Driven Engine
+
+Goal: Remove hardcoded physics. Make the engine read rules from JSON.
+
+Entity Schema: Define the JSON structure for an "Entity" (Properties like color, density).
+
+Rule AST Parser: Write a parser in WASM that can read a JSON rule object and convert it into an executable function/pointer.
+
+Basic Actions & Triggers: Implement the OnTick trigger, simple NeighborCheck conditions, and Move/Transform actions.
+
+Frontend Dummy Editor: Create a basic HTML form (dropdowns) to generate these JSON rules and send them to the WASM engine.
+
+Phase 3: The Complex Logic Update
+
+Goal: Introduce Variables, Lifetimes, and Boolean Logic.
+
+Pixel Memory: Expand the grid array to hold not just the ID, but a secondary integer for "State/Variables" (e.g., tracking how many ticks a fire pixel has been alive).
+
+Boolean Operators: Implement AND, OR, NOT parsing in the engine.
+
+Advanced Actions: Implement Spawn (creating new pixels based on triggers) and ModifyProperty (e.g., decrementing a lifetime variable).
+
+Global Rules: Implement the separation of Global rules (iterated over the whole grid based on properties) vs. Local rules.
+
+Phase 4: Optimization & Scale
+
+Goal: Expand the canvas size drastically without dropping framerates.
+
+Chunking System: Divide the grid into 32x32 chunks. Track is_dirty flags. If a chunk and its neighbors are not dirty, skip them in the logic loop.
+
+Multithreading: Implement Web Workers. Send different "dirty" chunks to different threads for rule evaluation.
+
+Double Buffering: Ensure rule evaluations don't interfere with each other by reading from "Grid A" and writing to "Grid B", then swapping them at the end of the tick.
+
+Phase 5: The Visual Scripting UI
+
+Goal: Make it fun and easy to use. Replace the basic forms with a Scratch-like interface.
+
+Node Editor Integration: Integrate a visual block editor (like Google Blockly, React Flow, or a custom canvas-based node UI).
+
+Block to AST Compiler: Write the logic that translates visual blocks connected by the user into the strict JSON format required by the engine.
+
+Entity Manager: Build the UI to create, name, color, and assign properties to custom pixels.
+
+Phase 6: Ecosystem & Sharing
+
+Goal: Allow users to share their creations.
+
+Serialization: Create an "Export" function that bundles the user's custom Entities, Rules, and Current Canvas State into a single, compressed JSON or Base64 string.
+
+Deserialization: Allow importing these strings to instantly load a friend's ecosystem.
+
+Blueprints: Allow saving "stamps" (e.g., a pre-built tree made of custom wood and leaf pixels) that can be drawn onto the canvas.
