@@ -1,18 +1,17 @@
 use crate::core::grid::Grid;
-use crate::core::pixel::PixelId;
+use crate::core::rule::{eval_condition, exec_action, Rule, Trigger};
+use crate::math::rng::Rng;
 
-/// Runs one simulation tick over the entire grid.
+/// Runs one simulation tick over the entire grid using the data-driven rule set.
 /// Processes rows bottom-to-top so gravity propagates naturally in one pass.
 /// Columns alternate left-to-right and right-to-left each tick to prevent bias.
-pub fn tick(grid: &mut Grid, tick_count: u64) {
+pub fn tick(grid: &mut Grid, rules: &[Vec<Rule>], rng: &mut Rng, tick_count: u64) {
     grid.clear_updated();
 
     let w = grid.width;
     let h = grid.height;
     let left_to_right = tick_count % 2 == 0;
 
-    // Process bottom row first (h-1) up to row 0 — skip the very bottom row
-    // as nothing can fall further. We start from h-1 going up.
     for raw_y in 0..h {
         let y = h - 1 - raw_y; // bottom-to-top
 
@@ -27,91 +26,46 @@ pub fn tick(grid: &mut Grid, tick_count: u64) {
                 continue;
             }
 
-            let cell = grid.get(x, y);
+            let entity_id = grid.get(x, y) as usize;
+            if entity_id == 0 || entity_id >= rules.len() {
+                continue; // skip Empty and unregistered ids
+            }
 
-            match cell {
-                PixelId::Sand  => step_sand(grid, x, y),
-                PixelId::Water => step_water(grid, x, y),
-                PixelId::Empty | PixelId::Stone => {}
+            let mut acted = false;
+            let rule_count = rules[entity_id].len();
+
+            for rule_idx in 0..rule_count {
+                let rule = &rules[entity_id][rule_idx];
+
+                if !matches!(rule.trigger, Trigger::OnTick) {
+                    continue;
+                }
+
+                let passes = match &rule.condition {
+                    Some(cond) => eval_condition(cond, grid, rng, x, y),
+                    None => true,
+                };
+
+                if passes {
+                    let action_count = rules[entity_id][rule_idx].actions.len();
+                    for action_idx in 0..action_count {
+                        // Safety: we clone the action to release the shared borrow on `rules`
+                        // before we mutably borrow `grid` in exec_action.
+                        let action = rules[entity_id][rule_idx].actions[action_idx].clone();
+                        if exec_action(&action, grid, x, y) {
+                            acted = true;
+                            break;
+                        }
+                    }
+                    if acted {
+                        break; // stop processing further rules for this pixel
+                    }
+                }
+            }
+
+            if acted {
+                grid.mark_updated(x, y);
             }
         }
     }
-}
-
-fn step_sand(grid: &mut Grid, x: usize, y: usize) {
-    let below_y = y + 1;
-    if below_y >= grid.height {
-        return; // already at the bottom
-    }
-
-    let below = grid.get(x, below_y);
-
-    // Fall straight down into empty space or through water
-    if below == PixelId::Empty || below == PixelId::Water {
-        grid.swap(x, y, x, below_y);
-        grid.mark_updated(x, below_y);
-        return;
-    }
-
-    // Try diagonal: pick a random side first to avoid left/right bias
-    let dir: i32 = if grid.rng.chance(0.5) { -1 } else { 1 };
-
-    for &d in &[dir, -dir] {
-        let nx = x as i32 + d;
-        if !grid.in_bounds(nx, below_y as i32) {
-            continue;
-        }
-        let nx = nx as usize;
-        let diag = grid.get(nx, below_y);
-        if diag == PixelId::Empty || diag == PixelId::Water {
-            grid.swap(x, y, nx, below_y);
-            grid.mark_updated(nx, below_y);
-            return;
-        }
-    }
-}
-
-fn step_water(grid: &mut Grid, x: usize, y: usize) {
-    let below_y = y + 1;
-    let w = grid.width;
-
-    // Fall straight down
-    if below_y < grid.height && grid.get(x, below_y) == PixelId::Empty {
-        grid.swap(x, y, x, below_y);
-        grid.mark_updated(x, below_y);
-        return;
-    }
-
-    // Spread sideways — try random direction first
-    let dir: i32 = if grid.rng.chance(0.5) { -1 } else { 1 };
-
-    for &d in &[dir, -dir] {
-        let nx = x as i32 + d;
-        if !grid.in_bounds(nx, y as i32) {
-            continue;
-        }
-        let nx = nx as usize;
-        if grid.get(nx, y) == PixelId::Empty {
-            grid.swap(x, y, nx, y);
-            grid.mark_updated(nx, y);
-            return;
-        }
-    }
-
-    // Try diagonal spread (waterfall effect)
-    if below_y < grid.height {
-        for &d in &[dir, -dir] {
-            let nx = x as i32 + d;
-            if !grid.in_bounds(nx, below_y as i32) {
-                continue;
-            }
-            let nx = nx as usize;
-            if grid.get(nx, below_y) == PixelId::Empty {
-                grid.swap(x, y, nx, below_y);
-                grid.mark_updated(nx, below_y);
-                return;
-            }
-        }
-    }
-    let _ = w; // suppress unused warning
 }

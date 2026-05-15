@@ -1,3 +1,4 @@
+pub mod entity;
 pub mod grid;
-pub mod pixel;
+pub mod rule;
 pub mod simulation;

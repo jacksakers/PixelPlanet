@@ -1,8 +1,6 @@
-use crate::core::pixel::PixelId;
-use crate::math::rng::Rng;
-
 /// The simulation grid — a flat 1D array representing a 2D canvas.
-/// Each cell stores a PixelId (u8). Indexed as: index = y * width + x.
+/// Each cell stores a raw entity id (u8). 0 is always Empty.
+/// Indexed as: index = y * width + x.
 ///
 /// A separate `updated` buffer tracks which cells were written this tick
 /// to prevent a single pixel from being processed twice per frame (double-step).
@@ -11,17 +9,15 @@ pub struct Grid {
     pub height: usize,
     cells: Vec<u8>,
     updated: Vec<bool>,
-    pub rng: Rng,
 }
 
 impl Grid {
-    pub fn new(width: usize, height: usize, seed: u32) -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Self {
             width,
             height,
-            cells: vec![PixelId::Empty as u8; width * height],
+            cells: vec![0u8; width * height], // 0 = Empty
             updated: vec![false; width * height],
-            rng: Rng::new(seed),
         }
     }
 
@@ -36,14 +32,14 @@ impl Grid {
     }
 
     #[inline]
-    pub fn get(&self, x: usize, y: usize) -> PixelId {
-        PixelId::from_u8(self.cells[self.index(x, y)])
+    pub fn get(&self, x: usize, y: usize) -> u8 {
+        self.cells[self.index(x, y)]
     }
 
     #[inline]
-    pub fn set(&mut self, x: usize, y: usize, id: PixelId) {
+    pub fn set(&mut self, x: usize, y: usize, id: u8) {
         let i = self.index(x, y);
-        self.cells[i] = id as u8;
+        self.cells[i] = id;
     }
 
     #[inline]
@@ -72,9 +68,10 @@ impl Grid {
 
     /// Write an RGBA pixel buffer for the current grid state.
     /// The output slice must be width * height * 4 bytes long.
-    pub fn write_rgba(&self, out: &mut [u8]) {
+    /// Colors are looked up from the provided table indexed by entity id.
+    pub fn write_rgba(&self, out: &mut [u8], color_table: &[[u8; 4]; 256]) {
         for (i, cell) in self.cells.iter().enumerate() {
-            let color = PixelId::from_u8(*cell).color();
+            let color = color_table[*cell as usize];
             let base = i * 4;
             out[base]     = color[0];
             out[base + 1] = color[1];
