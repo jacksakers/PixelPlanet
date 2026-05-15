@@ -1,0 +1,229 @@
+/**
+ * evaluator.cpp
+ *
+ * Main simulation tick loop.  Reads the global rule set and entity-specific
+ * rules loaded by the parser and applies them each frame.
+ *
+ * Evaluation order per cell (x, y):
+ *  1. Skip if dirty (already moved this tick) or EMPTY.
+ *  2. Skip if entity is marked isStatic.
+ *  3. Try global rules in registration order — stop at first rule that
+ *     executes at least one successful action.
+ *  4. If no global rule fired, try entity-specific rules in order — stop
+ *     at first rule that succeeds.
+ *
+ * Grid read/write discipline:
+ *  - Cell identity  → read from g_read (original state this tick).
+ *  - Neighbour checks → read from g_write (reflects moves already made
+ *    this tick so two pixels cannot occupy the same target cell).
+ *  - Mutations        → write to g_write and mark dirty[].
+ */
+
+#include "evaluator.hpp"
+#include "rule.hpp"
+#include "../core/grid.hpp"
+#include "../core/entity.hpp"
+#include "../core/types.hpp"
+#include "../math/rng.hpp"
+
+#include <cstring>
+
+namespace pp {
+
+// ---------------------------------------------------------------------------
+// Condition evaluation
+// ---------------------------------------------------------------------------
+
+static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId);
+
+static bool evalNeighborCheck(int x, int y, Dir dir, int targetId) {
+    int nx = x + DIR_DX[dir];
+    int ny = y + DIR_DY[dir];
+    if (!g_grid.valid(nx, ny)) return false;
+    uint8_t cell = g_grid.write[g_grid.idx(nx, ny)];
+    if (targetId == TARGET_EMPTY) return cell == EMPTY_ID;
+    if (targetId == TARGET_ANY)   return cell != EMPTY_ID;
+    return cell == static_cast<uint8_t>(targetId);
+}
+
+static bool evalPropertyCheck(uint8_t cellId, const Condition& c) {
+    float val = 0.0f;
+    if (c.propName == "density") {
+        val = g_entityRegistry.getDensity(static_cast<int>(cellId));
+    }
+    // Phase 3: look up custom per-cell variables here.
+
+    const auto& op = c.propOp;
+    if (op == "<")  return val <  c.propVal;
+    if (op == "<=") return val <= c.propVal;
+    if (op == "==") return val == c.propVal;
+    if (op == "!=") return val != c.propVal;
+    if (op == ">")  return val >  c.propVal;
+    if (op == ">=") return val >= c.propVal;
+    return false;
+}
+
+static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId) {
+    switch (c.type) {
+        case COND_ALWAYS:
+            return true;
+        case COND_NEIGHBOR:
+            return evalNeighborCheck(x, y, c.neighborDir, c.neighborTarget);
+        case COND_PROPERTY:
+            return evalPropertyCheck(cellId, c);
+        case COND_CHANCE:
+            return (rand32() % 100u) < static_cast<uint32_t>(c.chance);
+        case COND_AND:
+            for (const auto& child : c.children)
+                if (!evalCondition(child, x, y, cellId)) return false;
+            return true;
+        case COND_OR:
+            for (const auto& child : c.children)
+                if (evalCondition(child, x, y, cellId)) return true;
+            return false;
+        case COND_NOT:
+            return !c.children.empty() && !evalCondition(c.children[0], x, y, cellId);
+    }
+    return false;
+}
+
+// ---------------------------------------------------------------------------
+// Action execution
+// ---------------------------------------------------------------------------
+
+// Try to move the cell at (x,y) to (x+dx, y+dy) if that cell is EMPTY.
+static bool tryMove(int x, int y, Dir dir) {
+    int nx = x + DIR_DX[dir];
+    int ny = y + DIR_DY[dir];
+    if (!g_grid.valid(nx, ny)) return false;
+    if (g_grid.write[g_grid.idx(nx, ny)] != EMPTY_ID) return false;
+    g_grid.moveTo(x, y, nx, ny);
+    return true;
+}
+
+static bool execMoveFirst(int x, int y, const std::vector<Dir>& dirs, bool randomize) {
+    if (dirs.empty()) return false;
+
+    // For exactly two directions randomize which is tried first to remove bias.
+    if (randomize && dirs.size() == 2) {
+        if (rand32() & 1u) {
+            if (tryMove(x, y, dirs[0])) return true;
+            return tryMove(x, y, dirs[1]);
+        } else {
+            if (tryMove(x, y, dirs[1])) return true;
+            return tryMove(x, y, dirs[0]);
+        }
+    }
+
+    for (auto d : dirs)
+        if (tryMove(x, y, d)) return true;
+    return false;
+}
+
+static bool execAction(int x, int y, const Action& a) {
+    switch (a.type) {
+        case ACTION_MOVE:
+            return tryMove(x, y, a.dir);
+
+        case ACTION_MOVE_FIRST:
+            return execMoveFirst(x, y, a.dirs, a.randomizeDirs);
+
+        case ACTION_TRANSFORM: {
+            int i = g_grid.idx(x, y);
+            g_grid.write[i] = static_cast<uint8_t>(a.targetEntityId);
+            g_grid.dirty[i] = true;
+            return true;
+        }
+
+        case ACTION_SPAWN: {
+            int nx = x + DIR_DX[a.spawnDir];
+            int ny = y + DIR_DY[a.spawnDir];
+            if (!g_grid.valid(nx, ny)) return false;
+            int di = g_grid.idx(nx, ny);
+            if (g_grid.write[di] != EMPTY_ID) return false;
+            g_grid.write[di] = static_cast<uint8_t>(a.targetEntityId);
+            g_grid.dirty[di] = true;
+            return true;
+        }
+
+        case ACTION_DESTROY: {
+            int i = g_grid.idx(x, y);
+            g_grid.write[i] = EMPTY_ID;
+            g_grid.dirty[i] = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Execute a rule: evaluate condition, then run actions.
+// Returns true if the rule fired and at least one action succeeded.
+// Stops executing further actions after the first movement action succeeds
+// (since the cell is no longer at (x,y) in the write buffer).
+static bool execRule(const Rule& rule, int x, int y, uint8_t cellId) {
+    if (!evalCondition(rule.condition, x, y, cellId)) return false;
+
+    bool anyApplied = false;
+    for (const auto& action : rule.actions) {
+        bool applied = execAction(x, y, action);
+        if (applied) {
+            anyApplied = true;
+            // If a movement action succeeded, the pixel is gone from (x,y).
+            if (action.type == ACTION_MOVE || action.type == ACTION_MOVE_FIRST)
+                break;
+        }
+    }
+    return anyApplied;
+}
+
+// ---------------------------------------------------------------------------
+// Public tick entry point
+// ---------------------------------------------------------------------------
+void evaluateTick() {
+    Grid& g = g_grid;
+    if (!g.read) return;
+
+    memcpy(g.write, g.read, static_cast<size_t>(g.size));
+    memset(g.dirty, 0,      static_cast<size_t>(g.size) * sizeof(bool));
+
+    // Sweep bottom-up so gravity cascades naturally in a single pass.
+    // Alternate LTR / RTL per row using the RNG to remove sweep bias.
+    for (int y = g.h - 2; y >= 0; --y) {
+        bool ltr = static_cast<bool>(rand32() & 1u);
+
+        for (int xi = 0; xi < g.w; ++xi) {
+            int x = ltr ? xi : (g.w - 1 - xi);
+            int i = g.idx(x, y);
+
+            if (g.dirty[i]) continue;
+            uint8_t cellId = g.read[i];
+            if (cellId == EMPTY_ID) continue;
+
+            // Skip static entities (stone, etc.)
+            const EntityDef* def = g_entityRegistry.get(static_cast<int>(cellId));
+            if (def && def->isStatic) continue;
+
+            // ------------------------------------------------------------------
+            // 1. Global rules — e.g., gravity applies to everything with density > 0
+            // ------------------------------------------------------------------
+            bool moved = false;
+            for (const auto& rule : g_ruleSet.globalRules) {
+                if (execRule(rule, x, y, cellId)) { moved = true; break; }
+            }
+
+            // ------------------------------------------------------------------
+            // 2. Entity-specific rules — diagonal spread, sideways flow, etc.
+            // ------------------------------------------------------------------
+            if (!moved) {
+                for (const auto& [eid, rule] : g_ruleSet.entityRules) {
+                    if (eid != static_cast<int>(cellId)) continue;
+                    if (execRule(rule, x, y, cellId)) break;
+                }
+            }
+        }
+    }
+
+    g.swapBuffers();
+}
+
+} // namespace pp

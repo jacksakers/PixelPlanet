@@ -1,19 +1,33 @@
-import { PIXEL_EMPTY, PIXEL_SAND, PIXEL_WATER, PIXEL_STONE } from './SimCanvas.jsx';
+import { useSimContext }     from '../store/SimContext.jsx';
+import { PIXEL_EMPTY } from './SimCanvas.jsx';
 
-const TOOLS = [
-  { type: PIXEL_SAND,  label: 'Sand',  color: '#dbb63c', key: '1' },
-  { type: PIXEL_WATER, label: 'Water', color: '#1e64dc', key: '2' },
-  { type: PIXEL_STONE, label: 'Stone', color: '#787882', key: '3' },
-  { type: PIXEL_EMPTY, label: 'Erase', color: '#333344', key: '4' },
-];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 /**
  * Toolbar
  * Props:
- *   selectedType      - number  (currently selected pixel type)
- *   onSelectType      - (type: number) => void
+ *   selectedType   - number  (currently selected pixel type ID)
+ *   onSelectType   - (type: number) => void
  */
 export default function Toolbar({ selectedType, onSelectType }) {
+  const { entities } = useSimContext();
+
+  // Build tool list: all entities + eraser, each bound to a keyboard key.
+  const tools = [
+    ...entities.map((e, i) => ({
+      type:  e.id,
+      label: e.name,
+      color: `rgba(${e.color[0]},${e.color[1]},${e.color[2]},${e.color[3] / 255})`,
+      key:   KEYS[i] ?? '',
+    })),
+    {
+      type:  PIXEL_EMPTY,
+      label: 'Erase',
+      color: '#222233',
+      key:   KEYS[entities.length] ?? '',
+    },
+  ];
+
   return (
     <div style={{
       display: 'flex',
@@ -24,6 +38,7 @@ export default function Toolbar({ selectedType, onSelectType }) {
       borderBottom: '1px solid #2a2a3a',
       alignItems: 'center',
       userSelect: 'none',
+      flexShrink: 0,
     }}>
       <span style={{ fontSize: '0.75rem', color: '#888', marginRight: '0.25rem', letterSpacing: '0.05em' }}>
         PIXEL PLANET
@@ -31,12 +46,12 @@ export default function Toolbar({ selectedType, onSelectType }) {
 
       <div style={{ width: 1, height: 24, background: '#2a2a3a', margin: '0 0.25rem' }} />
 
-      {TOOLS.map(({ type, label, color, key }) => {
+      {tools.map(({ type, label, color, key }) => {
         const active = selectedType === type;
         return (
           <button
             key={type}
-            title={`${label} [${key}]`}
+            title={key ? `${label} [${key}]` : label}
             onClick={() => onSelectType(type)}
             style={{
               display: 'flex',
@@ -56,21 +71,20 @@ export default function Toolbar({ selectedType, onSelectType }) {
               display: 'inline-block',
               width: 12,
               height: 12,
-              borderRadius: type === PIXEL_EMPTY ? 2 : 2,
+              borderRadius: 2,
               background: color,
               border: type === PIXEL_EMPTY ? '1px solid #555' : 'none',
+              flexShrink: 0,
             }} />
             {label}
-            <span style={{ color: '#555', fontSize: '0.7rem' }}>{key}</span>
+            {key && <span style={{ color: '#555', fontSize: '0.7rem' }}>{key}</span>}
           </button>
         );
       })}
 
       <div style={{ flex: 1 }} />
 
-      <span style={{ fontSize: '0.7rem', color: '#444' }}>
-        Phase 1 - Falling Sand Demo
-      </span>
+      <span style={{ fontSize: '0.7rem', color: '#444' }}>Phase 2</span>
     </div>
   );
 }

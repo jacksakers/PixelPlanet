@@ -15,7 +15,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ---------------------------------------------------------------------------
 # Source
 # ---------------------------------------------------------------------------
-add_executable(pixel_planet src/main.cpp)
+add_executable(pixel_planet
+    src/main.cpp
+    src/core/entity.cpp
+    src/core/grid.cpp
+    src/logic/rule.cpp
+    src/logic/parser.cpp
+    src/logic/evaluator.cpp
+)
+
+target_include_directories(pixel_planet PRIVATE src)
 
 # ---------------------------------------------------------------------------
 # Emscripten link flags
@@ -25,6 +34,8 @@ set(EXPORTED_FNS
     "_engine_get_cells"
     "_engine_set_pixel"
     "_engine_update"
+    "_engine_load_config"
+    "_engine_set_seed"
 )
 string(JOIN "," EXPORTED_FNS_STR ${EXPORTED_FNS})
 
@@ -34,7 +45,7 @@ target_link_options(pixel_planet PRIVATE
     -sMODULARIZE=1
     "-sEXPORT_NAME=PixelPlanetEngine"
     "-sEXPORTED_FUNCTIONS=[${EXPORTED_FNS_STR}]"
-    "-sEXPORTED_RUNTIME_METHODS=[HEAPU8]"
+    "-sEXPORTED_RUNTIME_METHODS=[HEAPU8,ccall,cwrap]"
     -sALLOW_MEMORY_GROWTH=1
     "-sENVIRONMENT=web,worker"
     --no-entry

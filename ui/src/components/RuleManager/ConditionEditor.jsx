@@ -1,0 +1,195 @@
+/**
+ * RuleManager/ConditionEditor.jsx
+ *
+ * Recursive condition tree editor.  Supports all Phase-2 condition types:
+ * Always, NeighborCheck, PropertyCheck, Chance, AND, OR, NOT.
+ */
+
+import { useSimContext } from '../../store/SimContext.jsx';
+import {
+  CONDITION_TYPES,
+  DIRECTIONS,
+  PROPERTY_OPS,
+  BUILT_IN_PROPS,
+} from '../../shared/defaults.js';
+
+const S = {
+  wrap: (depth) => ({
+    paddingLeft: depth * 14,
+    borderLeft: depth > 0 ? '2px solid #2d2d48' : 'none',
+    marginLeft: depth > 0 ? 4 : 0,
+    paddingTop: 4,
+    paddingBottom: 4,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  }),
+  row: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' },
+  sel: {
+    background: '#1a1a2e',
+    border: '1px solid #3a3a55',
+    borderRadius: 5,
+    color: '#ccc',
+    padding: '3px 6px',
+    fontSize: '0.78rem',
+  },
+  inp: {
+    background: '#1a1a2e',
+    border: '1px solid #3a3a55',
+    borderRadius: 5,
+    color: '#ccc',
+    padding: '3px 6px',
+    fontSize: '0.78rem',
+    width: 72,
+  },
+  addBtn: {
+    padding: '2px 8px',
+    background: 'none',
+    border: '1px solid #3a3a55',
+    borderRadius: 5,
+    color: '#777',
+    cursor: 'pointer',
+    fontSize: '0.75rem',
+  },
+  delBtn: {
+    padding: '1px 6px',
+    background: 'none',
+    border: '1px solid #552222',
+    borderRadius: 5,
+    color: '#aa4444',
+    cursor: 'pointer',
+    fontSize: '0.72rem',
+  },
+};
+
+/** Target options: EMPTY, ANY, plus every defined entity. */
+function TargetSelect({ value, onChange }) {
+  const { entities } = useSimContext();
+  return (
+    <select style={S.sel} value={String(value)} onChange={(e) => {
+      const v = e.target.value;
+      onChange(v === 'EMPTY' || v === 'ANY' ? v : parseInt(v));
+    }}>
+      <option value="EMPTY">EMPTY</option>
+      <option value="ANY">ANY</option>
+      {entities.map((e) => (
+        <option key={e.id} value={String(e.id)}>{e.name}</option>
+      ))}
+    </select>
+  );
+}
+
+export default function ConditionEditor({ condition, onChange, onDelete, depth = 0 }) {
+  function set(partial) { onChange({ ...condition, ...partial }); }
+
+  function addChild() {
+    set({ children: [...(condition.children ?? []), { type: 'Always' }] });
+  }
+  function updateChild(i, child) {
+    const next = [...(condition.children ?? [])];
+    next[i] = child;
+    set({ children: next });
+  }
+  function removeChild(i) {
+    const next = [...(condition.children ?? [])];
+    next.splice(i, 1);
+    set({ children: next });
+  }
+
+  return (
+    <div style={S.wrap(depth)}>
+      <div style={S.row}>
+        {/* Type selector */}
+        <select
+          style={S.sel}
+          value={condition.type}
+          onChange={(e) => set({ type: e.target.value, children: [] })}
+        >
+          {CONDITION_TYPES.map((t) => <option key={t}>{t}</option>)}
+        </select>
+
+        {/* NeighborCheck fields */}
+        {condition.type === 'NeighborCheck' && (
+          <>
+            <select
+              style={S.sel}
+              value={condition.dir ?? 'down'}
+              onChange={(e) => set({ dir: e.target.value })}
+            >
+              {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
+            </select>
+            <TargetSelect
+              value={condition.target ?? 'EMPTY'}
+              onChange={(v) => set({ target: v })}
+            />
+          </>
+        )}
+
+        {/* PropertyCheck fields */}
+        {condition.type === 'PropertyCheck' && (
+          <>
+            <select style={S.sel} value={condition.prop ?? 'density'} onChange={(e) => set({ prop: e.target.value })}>
+              {BUILT_IN_PROPS.map((p) => <option key={p}>{p}</option>)}
+            </select>
+            <select style={S.sel} value={condition.op ?? '>'} onChange={(e) => set({ op: e.target.value })}>
+              {PROPERTY_OPS.map((o) => <option key={o}>{o}</option>)}
+            </select>
+            <input
+              style={S.inp}
+              type="number"
+              step="0.1"
+              value={condition.val ?? 0}
+              onChange={(e) => set({ val: parseFloat(e.target.value) || 0 })}
+            />
+          </>
+        )}
+
+        {/* Chance field */}
+        {condition.type === 'Chance' && (
+          <>
+            <input
+              style={S.inp}
+              type="number"
+              min={0} max={100} step={1}
+              value={condition.val ?? 50}
+              onChange={(e) => set({ val: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+            />
+            <span style={{ fontSize: '0.72rem', color: '#666' }}>%</span>
+          </>
+        )}
+
+        {/* Delete button (when nested) */}
+        {onDelete && (
+          <button style={S.delBtn} onClick={onDelete}>✕</button>
+        )}
+      </div>
+
+      {/* Recursive children for AND / OR */}
+      {(condition.type === 'AND' || condition.type === 'OR') && (
+        <>
+          {(condition.children ?? []).map((child, i) => (
+            <ConditionEditor
+              key={i}
+              condition={child}
+              onChange={(c) => updateChild(i, c)}
+              onDelete={() => removeChild(i)}
+              depth={depth + 1}
+            />
+          ))}
+          <button style={{ ...S.addBtn, alignSelf: 'flex-start', marginLeft: depth * 14 + 4 }} onClick={addChild}>
+            + condition
+          </button>
+        </>
+      )}
+
+      {/* Single child for NOT */}
+      {condition.type === 'NOT' && (
+        <ConditionEditor
+          condition={(condition.children ?? [])[0] ?? { type: 'Always' }}
+          onChange={(c) => set({ children: [c] })}
+          depth={depth + 1}
+        />
+      )}
+    </div>
+  );
+}

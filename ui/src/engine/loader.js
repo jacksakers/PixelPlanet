@@ -75,6 +75,30 @@ export function engineSetPixel(mod, x, y, type) {
 }
 
 /**
+ * Load (or reload) the entity registry and rule set into the engine.
+ *
+ * The full config object is serialised to JSON and passed as a UTF-8 string
+ * via Emscripten ccall, which handles allocation/deallocation automatically.
+ *
+ * @param {object} mod     - Emscripten module
+ * @param {object} config  - { entities, globalRules, entityRules }
+ * @returns {boolean}      - true if the engine accepted the config
+ */
+export function engineLoadConfig(mod, config) {
+  const json = JSON.stringify(config);
+  return mod.ccall('engine_load_config', 'number', ['string'], [json]) === 1;
+}
+
+/**
+ * Reset the deterministic RNG seed.
+ * @param {object} mod
+ * @param {number} seed  - unsigned 32-bit integer; 0 resets to default
+ */
+export function engineSetSeed(mod, seed) {
+  mod._engine_set_seed(seed >>> 0);
+}
+
+/**
  * Advance the simulation one tick.
  * @param {object} mod
  */
