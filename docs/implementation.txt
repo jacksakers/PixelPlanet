@@ -6,7 +6,7 @@ Phase 1: The High-Performance Foundation
 
 Goal: Prove the architecture works. Establish the bridge between the UI and the compiled backend.
 
-Setup the Environment: Initialize a Rust (or C++) project and configure WASM compilation (e.g., using wasm-pack). Initialize a React/TypeScript frontend.
+Setup the Environment: Initialize  C++ project and configure WASM compilation (e.g., using wasm-pack). Initialize a React/javascript frontend.
 
 The Memory Grid: Create a flat 1D array in WASM to represent a 2D grid (e.g., 500x500).
 

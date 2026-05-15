@@ -8,9 +8,9 @@ Pixel Planet is a highly scalable, modular, programmable cellular automata sandb
 
 To handle the massive processing overhead of running complex logic on potentially millions of pixels, the application requires a strict decoupled architecture.
 
-Backend / Physics Engine (The "Core"): Written in Rust or C++ and compiled to WebAssembly (WASM). WASM runs at near-native speeds inside the browser. It handles the grid, memory management, rule evaluation, and updating pixel states.
+Backend / Physics Engine (The "Core"): Written in C++ and compiled to WebAssembly (WASM). WASM runs at near-native speeds inside the browser. It handles the grid, memory management, rule evaluation, and updating pixel states.
 
-Frontend / UI (The "Shell"): Written in HTML/CSS/TypeScript (likely using a framework like React or Vue). It handles the Canvas rendering (via WebGL for speed), the Visual Node Editor, UI state, and communicating with the WASM core.
+Frontend / UI (The "Shell"): Written in HTML/CSS/javascript (likely using a framework like React or Vue). It handles the Canvas rendering (via WebGL for speed), the Visual Node Editor, UI state, and communicating with the WASM core.
 
 Data Serialization: Rules created in the UI are compiled into a strict JSON Abstract Syntax Tree (AST) and passed to the WASM engine.
 
@@ -105,20 +105,20 @@ Bitwise Operations: Pixel data should be packed into 32-bit or 64-bit integers (
 File Structure Strategy
 
 /pixel-planet
-  /engine           # C++ or Rust code (Compiles to WASM)
+  /engine           # C++ code (Compiles to WASM)
     /src
       /core         # Memory, Grid, Chunks
       /logic        # Rule parser, AST evaluator
       /math         # RNG, Vectors
-  /ui               # Frontend web app (React/TypeScript)
+  /ui               # Frontend web app (React/javascript)
     /components     # Canvas, Menus
     /rule-builder   # Visual node editor (Blockly or custom)
-  /shared           # TypeScript interfaces & Rust structs (JSON schemas)
+  /shared           # javascript interfaces & structs (JSON schemas)
 
 
 Core Principles
 
-Data-Oriented Design (DOD): In the C++/Rust engine, organize data for the CPU cache. Use Structs of Arrays (SoA) or flat arrays rather than Object-Oriented deep classes.
+Data-Oriented Design (DOD): In the C++ engine, organize data for the CPU cache. Use Structs of Arrays (SoA) or flat arrays rather than Object-Oriented deep classes.
 
 Agnostic Engine: The backend should never know what "Water" or "Fire" is. It only knows IDs and Rules. All logic is injected at runtime.
 
