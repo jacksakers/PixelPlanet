@@ -39,6 +39,7 @@ const BRUSH_RADIUS = 3;
  */
 export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, tickRateRef, clearCanvasRef }) {
   const canvasRef       = useRef(null);
+  const containerRef    = useRef(null);
   const modRef          = useRef(null);
   const rafRef          = useRef(null);
   const mouseRef        = useRef({ down: false, x: 0, y: 0 });
@@ -157,6 +158,27 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
   // -------------------------------------------------------------------------
   // Mouse helpers — convert CSS coords → grid coords
   // -------------------------------------------------------------------------
+  // Scale the canvas CSS size to the largest square that fits the container.
+  // The logical resolution (width/height attributes) stays at GRID_W×GRID_H;
+  // imageRendering: pixelated handles crisp upscaling.
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas    = canvasRef.current;
+    if (!container || !canvas) return;
+
+    function fit() {
+      const { width, height } = container.getBoundingClientRect();
+      const size = Math.min(width, height);
+      canvas.style.width  = `${size}px`;
+      canvas.style.height = `${size}px`;
+    }
+
+    const ro = new ResizeObserver(fit);
+    ro.observe(container);
+    fit();
+    return () => ro.disconnect();
+  }, []);
+
   const toGrid = useCallback((e) => {
     const rect   = canvasRef.current.getBoundingClientRect();
     const scaleX = GRID_W / rect.width;
@@ -177,15 +199,18 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
   const onTouchEnd   = useCallback(()  => { mouseRef.current.down = false; }, []);
 
   return (
-    <div style={{
-      position: 'relative',
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#0f0f18',
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#0f0f18',
+      }}
+    >
       {status && (
         <div style={{
           position: 'absolute', inset: 0,
@@ -205,9 +230,8 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
           display: 'block',
           cursor: 'crosshair',
           imageRendering: 'pixelated',
-          maxWidth: '100%',
-          maxHeight: '100%',
-          aspectRatio: `${GRID_W} / ${GRID_H}`,
+          // Actual CSS size is set dynamically by the ResizeObserver above.
+          // No width/height CSS here — the observer writes it directly.
           border: '1px solid #2d2d42',
           boxShadow: '0 0 24px rgba(0,0,0,0.6)',
         }}

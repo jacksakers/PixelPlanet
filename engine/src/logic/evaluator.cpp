@@ -148,19 +148,12 @@ static bool tryMove(int x, int y, Dir dir) {
 static bool execMoveFirst(int x, int y, const std::vector<Dir>& dirs, bool randomize) {
     if (dirs.empty()) return false;
 
-    // For exactly two directions randomize which is tried first to remove bias.
-    if (randomize && dirs.size() == 2) {
-        if (rand32() & 1u) {
-            if (tryMove(x, y, dirs[0])) return true;
-            return tryMove(x, y, dirs[1]);
-        } else {
-            if (tryMove(x, y, dirs[1])) return true;
-            return tryMove(x, y, dirs[0]);
-        }
+    // Pick a random starting index so every direction gets a fair first-try.
+    size_t n     = dirs.size();
+    size_t start = randomize ? (rand32() % n) : 0;
+    for (size_t i = 0; i < n; ++i) {
+        if (tryMove(x, y, dirs[(start + i) % n])) return true;
     }
-
-    for (auto d : dirs)
-        if (tryMove(x, y, d)) return true;
     return false;
 }
 
@@ -272,18 +265,12 @@ static bool execAction(int x, int y, const Action& a) {
             if (a.type == ACTION_EAT) {
                 return tryEat(a.dir);
             } else {
-                // EatFirst: try each direction in order (optionally randomised).
-                if (a.randomizeDirs && a.dirs.size() == 2) {
-                    if (rand32() & 1u) {
-                        if (tryEat(a.dirs[0])) return true;
-                        return tryEat(a.dirs[1]);
-                    } else {
-                        if (tryEat(a.dirs[1])) return true;
-                        return tryEat(a.dirs[0]);
-                    }
-                }
-                for (auto d : a.dirs)
-                    if (tryEat(d)) return true;
+                // EatFirst: try each direction, randomising the starting index.
+                size_t n     = a.dirs.size();
+                if (n == 0) return false;
+                size_t start = a.randomizeDirs ? (rand32() % n) : 0;
+                for (size_t i = 0; i < n; ++i)
+                    if (tryEat(a.dirs[(start + i) % n])) return true;
                 return false;
             }
         }
@@ -318,17 +305,12 @@ static bool execAction(int x, int y, const Action& a) {
             if (a.type == ACTION_SWAP) {
                 return trySwap(a.dir);
             } else {
-                if (a.randomizeDirs && a.dirs.size() == 2) {
-                    if (rand32() & 1u) {
-                        if (trySwap(a.dirs[0])) return true;
-                        return trySwap(a.dirs[1]);
-                    } else {
-                        if (trySwap(a.dirs[1])) return true;
-                        return trySwap(a.dirs[0]);
-                    }
-                }
-                for (auto d : a.dirs)
-                    if (trySwap(d)) return true;
+                // SwapFirst: try each direction, randomising the starting index.
+                size_t n     = a.dirs.size();
+                if (n == 0) return false;
+                size_t start = a.randomizeDirs ? (rand32() % n) : 0;
+                for (size_t i = 0; i < n; ++i)
+                    if (trySwap(a.dirs[(start + i) % n])) return true;
                 return false;
             }
         }
