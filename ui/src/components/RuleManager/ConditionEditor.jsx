@@ -62,18 +62,32 @@ const S = {
   },
 };
 
-/** Target options: EMPTY, ANY, plus every defined entity. */
+/** Target options: EMPTY, ANY, plus every defined entity (stored as name string). */
 function TargetSelect({ value, onChange }) {
   const { entities } = useSimContext();
+
+  // Normalise incoming value: numeric ID → entity name for display.
+  const nameOf = (v) => {
+    if (v === 'EMPTY' || v === 'ANY') return v;
+    if (typeof v === 'number') {
+      const e = entities.find((e) => e.id === v);
+      return e ? e.name : String(v);
+    }
+    return String(v ?? 'ANY');
+  };
+
+  const display = nameOf(value);
+
   return (
-    <select style={S.sel} value={String(value)} onChange={(e) => {
+    <select style={S.sel} value={display} onChange={(e) => {
       const v = e.target.value;
-      onChange(v === 'EMPTY' || v === 'ANY' ? v : parseInt(v));
+      // Always emit name strings; engine resolves them.
+      onChange(v);
     }}>
       <option value="EMPTY">EMPTY</option>
       <option value="ANY">ANY</option>
       {entities.map((e) => (
-        <option key={e.id} value={String(e.id)}>{e.name}</option>
+        <option key={e.id} value={e.name}>{e.name}</option>
       ))}
     </select>
   );

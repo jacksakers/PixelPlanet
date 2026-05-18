@@ -122,7 +122,7 @@ export default function Sidebar({ selectedType }) {
       {/* Content */}
       <div style={S.content}>
         {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} />}
-        {tab === TAB_RULES    && <RuleManager />}
+        {tab === TAB_RULES    && <RuleManager selectedType={selectedType} />}
         {tab === TAB_SETTINGS && <SettingsPanel />}
       </div>
     </div>

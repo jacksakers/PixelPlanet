@@ -60,6 +60,10 @@ enum ActionType : int {
     ACTION_SPAWN           = 3,  // Create a new cell in a neighbouring slot
     ACTION_DESTROY         = 4,  // Remove self (set to EMPTY)
     ACTION_MODIFY_VARIABLE = 5,  // Mutate a per-cell variable (Phase 3)
+    ACTION_EAT             = 6,  // Move into neighbour of target type, consuming it
+    ACTION_EAT_FIRST       = 7,  // Try each dir; eat first matching target
+    ACTION_SWAP            = 8,  // Swap positions with a neighbour of target type
+    ACTION_SWAP_FIRST      = 9,  // Try each dir; swap with first matching target
 };
 
 // ---------------------------------------------------------------------------

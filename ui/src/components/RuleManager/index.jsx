@@ -6,7 +6,7 @@
  * Entity rules are scoped to a specific entity type.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSimContext } from '../../store/SimContext.jsx';
 import { newRuleId }     from '../../shared/defaults.js';
 import RuleList          from './RuleList.jsx';
@@ -38,7 +38,7 @@ const S = {
   },
 };
 
-export default function RuleManager() {
+export default function RuleManager({ selectedType }) {
   const {
     entities,
     globalRules,
@@ -51,13 +51,23 @@ export default function RuleManager() {
     deleteEntityRule,
   } = useSimContext();
 
-  const [tab, setTab]             = useState(TAB_GLOBAL);
+  const [tab, setTab]             = useState(TAB_ENTITY);
   const [selectedRuleId, setSelectedRuleId] = useState(null);
   const [editing, setEditing]     = useState(false);
   const [editingNew, setEditingNew] = useState(false);
   const [entityId, setEntityId]   = useState(entities[0]?.id ?? null);
-  const [copyingRuleId, setCopyingRuleId] = useState(null); // id of rule being copied
-  const [copyTargetId, setCopyTargetId]   = useState(null); // target entity for copy
+  const [copyingRuleId, setCopyingRuleId] = useState(null);
+  const [copyTargetId, setCopyTargetId]   = useState(null);
+
+  // Sync entity selection when toolbar changes
+  useEffect(() => {
+    if (selectedType && selectedType > 0) {
+      setTab(TAB_ENTITY);
+      setEntityId(selectedType);
+      setEditing(false);
+      setSelectedRuleId(null);
+    }
+  }, [selectedType]);
 
   // ── Resolve currently displayed rule list ───────────────────────────────
   const ruleList = tab === TAB_GLOBAL

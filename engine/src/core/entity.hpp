@@ -41,6 +41,8 @@ public:
     void clear();
     void registerEntity(const EntityDef& def);
     const EntityDef* get(int id) const;
+    // Returns the entity ID for the given name, or -1 if not found.
+    int getByName(const std::string& name) const;
     const std::unordered_map<int, EntityDef>& all() const { return entities_; }
     float getDensity(int id) const;
 

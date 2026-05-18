@@ -17,6 +17,12 @@ const EntityDef* EntityRegistry::get(int id) const {
     return it != entities_.end() ? &it->second : nullptr;
 }
 
+int EntityRegistry::getByName(const std::string& name) const {
+    for (const auto& kv : entities_)
+        if (kv.second.name == name) return kv.first;
+    return -1;
+}
+
 float EntityRegistry::getDensity(int id) const {
     const EntityDef* def = get(id);
     return def ? def->density : 0.0f;

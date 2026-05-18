@@ -61,6 +61,16 @@ struct Action {
     std::string modVarName;   // variable name to modify
     std::string modOp;        // "set" | "+=" | "-=" | "*="
     float       modVal = 0.0f;
+
+    // ACTION_EAT / ACTION_EAT_FIRST — move into a cell of eatTarget type, consuming it.
+    // dirs / randomizeDirs reused for EatFirst.
+    int         eatTarget = TARGET_ANY;   // TARGET_ANY | entity ID (TARGET_EMPTY not useful here)
+    std::string gainVar;                  // optional per-cell variable to increment when eating
+    float       gainVal = 0.0f;           // amount to add to gainVar
+
+    // ACTION_SWAP / ACTION_SWAP_FIRST — swap positions with a neighbour of swapTarget type.
+    // dir / dirs / randomizeDirs reused from above.
+    int         swapTarget = TARGET_ANY;  // TARGET_ANY | entity ID
 };
 
 // ---------------------------------------------------------------------------

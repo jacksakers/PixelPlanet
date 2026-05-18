@@ -46,10 +46,20 @@ const S = {
 
 function EntitySelect({ value, onChange }) {
   const { entities } = useSimContext();
+  // Normalise: numeric ID → name for display (legacy rule compat).
+  const nameOf = (v) => {
+    if (!v && v !== 0) return '';
+    if (typeof v === 'number') {
+      const e = entities.find((e) => e.id === v);
+      return e ? e.name : String(v);
+    }
+    return String(v);
+  };
+  const display = nameOf(value);
   return (
-    <select style={S.sel} value={String(value ?? '')} onChange={(e) => onChange(parseInt(e.target.value))}>
+    <select style={S.sel} value={display} onChange={(e) => onChange(e.target.value)}>
       <option value="">— select —</option>
-      {entities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+      {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
     </select>
   );
 }
@@ -163,6 +173,98 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
             onChange={(e) => set({ val: parseFloat(e.target.value) || 0 })}
           />
         </>
+      )}
+
+      {/* Eat — single direction, target entity, optional energy gain */}
+      {action.type === 'Eat' && (
+        <>
+          <select style={S.sel} value={action.dir ?? 'up'} onChange={(e) => set({ dir: e.target.value })}>
+            {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
+          </select>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>eats</span>
+          <select style={S.sel} value={String(action.target ?? 'ANY')}
+            onChange={(e) => set({ target: e.target.value })}>
+            <option value="ANY">ANY</option>
+            {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+          </select>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>gain</span>
+          <VarSelect entityId={entityId} value={action.gainVar ?? ''} onChange={(v) => set({ gainVar: v })} entities={entities} />
+          <input style={{ ...S.sel, width: 48 }} type="number" step="1" value={action.gainVal ?? 0}
+            onChange={(e) => set({ gainVal: parseFloat(e.target.value) || 0 })} />
+        </>
+      )}
+
+      {/* EatFirst — multi-direction, target entity, optional energy gain */}
+      {action.type === 'EatFirst' && (
+        <div style={S.multiDirsWrap}>
+          <div style={S.multiDirsRow}>
+            <span style={{ fontSize: '0.74rem', color: '#888' }}>eats</span>
+            <select style={S.sel} value={String(action.target ?? 'ANY')}
+              onChange={(e) => set({ target: e.target.value })}>
+              <option value="ANY">ANY</option>
+              {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+            </select>
+            <span style={{ fontSize: '0.74rem', color: '#888' }}>gain</span>
+            <VarSelect entityId={entityId} value={action.gainVar ?? ''} onChange={(v) => set({ gainVar: v })} entities={entities} />
+            <input style={{ ...S.sel, width: 48 }} type="number" step="1" value={action.gainVal ?? 0}
+              onChange={(e) => set({ gainVal: parseFloat(e.target.value) || 0 })} />
+          </div>
+          {(action.dirs ?? []).map((d, i) => (
+            <div key={i} style={S.multiDirsRow}>
+              <select style={S.sel} value={d} onChange={(e) => updateDir(i, e.target.value)}>
+                {DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
+              </select>
+              <button style={{ ...S.delBtn, marginLeft: 0 }} onClick={() => removeDir(i)}>✕</button>
+            </div>
+          ))}
+          <button onClick={addDir} style={{ background: 'none', border: '1px solid #3a3a55', borderRadius: 5, color: '#777', cursor: 'pointer', fontSize: '0.72rem', padding: '2px 6px', alignSelf: 'flex-start' }}>+ dir</button>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>
+            <input type="checkbox" checked={action.randomize !== false} onChange={(e) => set({ randomize: e.target.checked })} />
+            randomise order
+          </label>
+        </div>
+      )}
+
+      {/* Swap — single direction, target entity */}
+      {action.type === 'Swap' && (
+        <>
+          <select style={S.sel} value={action.dir ?? 'up'} onChange={(e) => set({ dir: e.target.value })}>
+            {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
+          </select>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>with</span>
+          <select style={S.sel} value={String(action.target ?? 'ANY')}
+            onChange={(e) => set({ target: e.target.value })}>
+            <option value="ANY">ANY</option>
+            {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+          </select>
+        </>
+      )}
+
+      {/* SwapFirst — multi-direction, target entity */}
+      {action.type === 'SwapFirst' && (
+        <div style={S.multiDirsWrap}>
+          <div style={S.multiDirsRow}>
+            <span style={{ fontSize: '0.74rem', color: '#888' }}>with</span>
+            <select style={S.sel} value={String(action.target ?? 'ANY')}
+              onChange={(e) => set({ target: e.target.value })}>
+              <option value="ANY">ANY</option>
+              {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+            </select>
+          </div>
+          {(action.dirs ?? []).map((d, i) => (
+            <div key={i} style={S.multiDirsRow}>
+              <select style={S.sel} value={d} onChange={(e) => updateDir(i, e.target.value)}>
+                {DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
+              </select>
+              <button style={{ ...S.delBtn, marginLeft: 0 }} onClick={() => removeDir(i)}>✕</button>
+            </div>
+          ))}
+          <button onClick={addDir} style={{ background: 'none', border: '1px solid #3a3a55', borderRadius: 5, color: '#777', cursor: 'pointer', fontSize: '0.72rem', padding: '2px 6px', alignSelf: 'flex-start' }}>+ dir</button>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>
+            <input type="checkbox" checked={action.randomize !== false} onChange={(e) => set({ randomize: e.target.checked })} />
+            randomise order
+          </label>
+        </div>
       )}
 
       <button style={S.delBtn} onClick={onDelete}>✕</button>

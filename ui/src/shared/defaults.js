@@ -242,6 +242,7 @@ export const CONDITION_TYPES = [
 
 export const ACTION_TYPES = [
   'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
+  'Eat', 'EatFirst', 'Swap', 'SwapFirst',
 ];
 
 export const PROPERTY_OPS = ['<', '<=', '==', '!=', '>', '>='];

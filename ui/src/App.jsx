@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import SimCanvas, { PIXEL_SAND } from './components/SimCanvas.jsx';
-import Toolbar   from './components/Toolbar.jsx';
-import Sidebar   from './components/Sidebar.jsx';
+import Toolbar       from './components/Toolbar.jsx';
+import Sidebar       from './components/Sidebar.jsx';
+import PixelPalette  from './components/PixelPalette.jsx';
 import { SimProvider, useSimContext } from './store/SimContext.jsx';
 
 // Inner app component (needs access to context for keyboard shortcuts).
@@ -37,12 +38,18 @@ function AppInner() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0d0d16' }}>
-      <Toolbar selectedType={selectedType} onSelectType={handleSelectType} brushSize={brushSize} onBrushSize={handleBrushSize} />
+      <Toolbar />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar selectedType={selectedType} />
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <SimCanvas selectedTypeRef={selectedTypeRef} brushSizeRef={brushSizeRef} />
         </div>
+        <PixelPalette
+          selectedType={selectedType}
+          onSelectType={handleSelectType}
+          brushSize={brushSize}
+          onBrushSize={handleBrushSize}
+        />
       </div>
     </div>
   );

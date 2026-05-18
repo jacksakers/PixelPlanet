@@ -77,6 +77,7 @@ const FALLBACK = {
   ],
   ACTION_TYPES: [
     'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
+    'Eat', 'EatFirst', 'Swap', 'SwapFirst',
   ],
   DIRECTIONS: [
     'up', 'down', 'left', 'right',
@@ -234,6 +235,44 @@ const ACTION_DETAIL = {
       { name: 'val',     type: 'number',  desc: 'Amount to add/subtract/multiply/set.' },
     ],
     example: `{ "type": "ModifyVariable", "varName": "lifetime", "op": "-=", "val": 1 }`,
+  },
+  Eat: {
+    desc: 'Moves this cell one step in a given direction **into** a cell occupied by the target entity type, consuming it. Optionally grants the eater a variable bonus.',
+    fields: [
+      { name: 'dir',     type: 'Direction',       desc: 'Direction of the prey.' },
+      { name: 'target',  type: '"ANY"|id',        desc: 'Entity ID to eat, or "ANY" for any non-empty cell.' },
+      { name: 'gainVar', type: 'string',           desc: '(optional) Variable name on the eater to increase when eating succeeds.' },
+      { name: 'gainVal', type: 'number',           desc: '(optional) Amount to add to gainVar (default 0).' },
+    ],
+    example: `{ "type": "Eat", "dir": "up", "target": 5, "gainVar": "energy", "gainVal": 20 }`,
+  },
+  EatFirst: {
+    desc: 'Tries each direction in order and eats the first cell that matches the target type. Same as MoveFirst but for occupied cells.',
+    fields: [
+      { name: 'dirs',      type: 'Direction[]', desc: 'Ordered list of directions to try.' },
+      { name: 'randomize', type: 'boolean',     desc: 'If true (default), shuffle the direction list each tick.' },
+      { name: 'target',    type: '"ANY"|id',   desc: 'Entity ID to eat, or "ANY".' },
+      { name: 'gainVar',   type: 'string',      desc: '(optional) Variable to increase on successful eat.' },
+      { name: 'gainVal',   type: 'number',      desc: '(optional) Amount to gain.' },
+    ],
+    example: `{ "type": "EatFirst", "dirs": ["up", "left", "right", "down"], "target": 3, "randomize": true, "gainVar": "energy", "gainVal": 10 }`,
+  },
+  Swap: {
+    desc: 'Swaps this cell\'s position with a neighbour of the given target type. Both cells and all their variables are exchanged. Used for buoyancy and swimming.',
+    fields: [
+      { name: 'dir',    type: 'Direction',  desc: 'Direction of the cell to swap with.' },
+      { name: 'target', type: '"ANY"|id',  desc: 'Entity ID to swap with, or "ANY" for any non-empty cell.' },
+    ],
+    example: `{ "type": "Swap", "dir": "up", "target": 2 }`,
+  },
+  SwapFirst: {
+    desc: 'Tries each direction in order and swaps with the first cell that matches the target type.',
+    fields: [
+      { name: 'dirs',      type: 'Direction[]', desc: 'Ordered list of directions to try.' },
+      { name: 'randomize', type: 'boolean',     desc: 'If true (default), shuffle the direction list each tick.' },
+      { name: 'target',    type: '"ANY"|id',   desc: 'Entity ID to swap with, or "ANY".' },
+    ],
+    example: `{ "type": "SwapFirst", "dirs": ["left", "right"], "target": 2, "randomize": true }`,
   },
 };
 
@@ -579,11 +618,32 @@ click **Merge (add)** to add Lava and Spark to your sandbox.
    - Rule 1 (death): \`VariableCheck energy <= 0\` → Destroy
    - Rule 2 (seek + age): \`Always\` → [ModifyVariable energy -= 1, Move toward food]
 
-7. **Flocking / grouping.** Use \`NeighborCount target:<self ID> op:< val:2\` to make a
-   pixel move toward others of its kind (moves only when isolated, stops when grouped).
+7. **Eating for survival.** Combine \`Eat\` with energy gain and starvation death:
+   - Give the predator an \`energy\` variable (default e.g. 200).
+   - Rule 1: \`VariableCheck energy <= 0\` → Destroy  *(starve)*
+   - Rule 2: \`NeighborCheck dir:up target:<prey>\` → EatFirst + gainVar:energy gainVal:50
+   - Rule 3: \`Always\` → ModifyVariable energy -= 1  *(passive drain)*
 
-8. **The bundle format is portable.** Any bundle generated for this schema version can
-   be imported into any PixelPlanet instance running the same engine phase.
+8. **Swimming / buoyancy through liquid.** Use \`Swap\` or \`SwapFirst\` with the liquid entity ID:
+   - A fish swimming sideways: \`SwapFirst dirs:[left,right] target:<water ID>\`
+   - A bubble floating up: \`Swap dir:up target:<water ID>\`
+   - Combine with a \`NeighborCheck\` condition to only swim when submerged.
+
+9. **Photosynthesis.** Give a plant an \`energy\` variable. On \`OnRandomTick\`:
+   - Condition: \`NeighborCheck dir:up target:<sunlight ID>\` (or \`Chance\` if no explicit sun)
+   - Action: \`ModifyVariable energy += 5\`
+   - Separate rule: \`VariableCheck energy >= 100\` + \`Chance 10\` → Spawn self in a neighbour slot
+
+10. **Water cycle.** Model evaporation/condensation with Transform + Spawn:
+    - Water on \`OnRandomTick\` + \`Chance 1\` + \`NeighborCheck up EMPTY\` → Transform to Steam
+    - Steam moves up (\`Move up\`); when it reaches the top it has no EMPTY above → \`NeighborCount EMPTY < 1\` → Transform to Cloud
+    - Cloud on \`OnRandomTick\` + \`Chance 5\` + \`NeighborCheck down EMPTY\` → Spawn Water below
+
+11. **Flocking / grouping.** Use \`NeighborCount target:<self ID> op:< val:2\` to make a
+    pixel move toward others of its kind (moves only when isolated, stops when grouped).
+
+12. **The bundle format is portable.** Any bundle generated for this schema version can
+    be imported into any PixelPlanet instance running the same engine phase.
 
 ---
 

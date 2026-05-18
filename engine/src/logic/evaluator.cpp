@@ -231,6 +231,107 @@ static bool execAction(int x, int y, const Action& a) {
             g_grid.vars_write[i * NUM_VARS_PER_CELL + slot] = static_cast<uint16_t>(next);
             return true;
         }
+
+        case ACTION_EAT:
+        case ACTION_EAT_FIRST: {
+            // Helpers reused for both single-dir and multi-dir variants.
+            auto tryEat = [&](Dir edir) -> bool {
+                int nx = x + DIR_DX[edir];
+                int ny = y + DIR_DY[edir];
+                if (!g_grid.valid(nx, ny)) return false;
+                int ni = g_grid.idx(nx, ny);
+                uint8_t target = g_grid.write[ni];
+                // Target check.
+                if (a.eatTarget == TARGET_EMPTY) return false; // eating empty makes no sense
+                if (a.eatTarget == TARGET_ANY) {
+                    if (target == EMPTY_ID) return false;
+                } else {
+                    if (target != static_cast<uint8_t>(a.eatTarget)) return false;
+                }
+                // Move self into the target cell (consuming it).
+                g_grid.moveTo(x, y, nx, ny);
+                // Optional variable gain for the eater.
+                if (!a.gainVar.empty() && a.gainVal != 0.0f) {
+                    int oi = g_grid.idx(nx, ny); // eater is now at (nx,ny)
+                    uint8_t eaterId = g_grid.write[oi];
+                    const EntityDef* eDef = g_entityRegistry.get(static_cast<int>(eaterId));
+                    if (eDef) {
+                        int slot = eDef->getVarSlot(a.gainVar);
+                        if (slot >= 0) {
+                            float cur  = static_cast<float>(g_grid.vars_write[oi * NUM_VARS_PER_CELL + slot]);
+                            float next = cur + a.gainVal;
+                            if (next < 0.0f)     next = 0.0f;
+                            if (next > 65535.0f) next = 65535.0f;
+                            g_grid.vars_write[oi * NUM_VARS_PER_CELL + slot] = static_cast<uint16_t>(next);
+                        }
+                    }
+                }
+                return true;
+            };
+
+            if (a.type == ACTION_EAT) {
+                return tryEat(a.dir);
+            } else {
+                // EatFirst: try each direction in order (optionally randomised).
+                if (a.randomizeDirs && a.dirs.size() == 2) {
+                    if (rand32() & 1u) {
+                        if (tryEat(a.dirs[0])) return true;
+                        return tryEat(a.dirs[1]);
+                    } else {
+                        if (tryEat(a.dirs[1])) return true;
+                        return tryEat(a.dirs[0]);
+                    }
+                }
+                for (auto d : a.dirs)
+                    if (tryEat(d)) return true;
+                return false;
+            }
+        }
+
+        case ACTION_SWAP:
+        case ACTION_SWAP_FIRST: {
+            auto trySwap = [&](Dir sdir) -> bool {
+                int nx = x + DIR_DX[sdir];
+                int ny = y + DIR_DY[sdir];
+                if (!g_grid.valid(nx, ny)) return false;
+                int ni = g_grid.idx(nx, ny);
+                uint8_t target = g_grid.write[ni];
+                // Target check.
+                if (a.swapTarget == TARGET_EMPTY) {
+                    if (target != EMPTY_ID) return false;
+                } else if (a.swapTarget == TARGET_ANY) {
+                    if (target == EMPTY_ID) return false;
+                } else {
+                    if (target != static_cast<uint8_t>(a.swapTarget)) return false;
+                }
+                // Swap both cells and their variable banks.
+                int si = g_grid.idx(x, y);
+                std::swap(g_grid.write[si], g_grid.write[ni]);
+                g_grid.dirty[si] = true;
+                g_grid.dirty[ni] = true;
+                for (int s = 0; s < NUM_VARS_PER_CELL; ++s)
+                    std::swap(g_grid.vars_write[si * NUM_VARS_PER_CELL + s],
+                              g_grid.vars_write[ni * NUM_VARS_PER_CELL + s]);
+                return true;
+            };
+
+            if (a.type == ACTION_SWAP) {
+                return trySwap(a.dir);
+            } else {
+                if (a.randomizeDirs && a.dirs.size() == 2) {
+                    if (rand32() & 1u) {
+                        if (trySwap(a.dirs[0])) return true;
+                        return trySwap(a.dirs[1]);
+                    } else {
+                        if (trySwap(a.dirs[1])) return true;
+                        return trySwap(a.dirs[0]);
+                    }
+                }
+                for (auto d : a.dirs)
+                    if (trySwap(d)) return true;
+                return false;
+            }
+        }
     }
     return false;
 }
@@ -249,7 +350,9 @@ static bool execRule(const Rule& rule, int x, int y, uint8_t cellId, bool* moved
         if (applied) {
             anyApplied = true;
             // If a movement action succeeded, the pixel is gone from (x,y).
-            if (action.type == ACTION_MOVE || action.type == ACTION_MOVE_FIRST) {
+            if (action.type == ACTION_MOVE || action.type == ACTION_MOVE_FIRST ||
+                action.type == ACTION_EAT  || action.type == ACTION_EAT_FIRST  ||
+                action.type == ACTION_SWAP || action.type == ACTION_SWAP_FIRST) {
                 didMove = true;
                 break;
             }

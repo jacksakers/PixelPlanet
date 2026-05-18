@@ -63,6 +63,55 @@ static Dir parseDir(const std::string& s) {
 }
 
 // ---------------------------------------------------------------------------
+// Target resolution — shared by all condition and action parsers.
+//
+// Accepts:
+//   "EMPTY"        → TARGET_EMPTY (-1)
+//   "ANY"          → TARGET_ANY   (-2)
+//   integer        → entity ID as-is
+//   "3"            → entity ID 3  (numeric string)
+//   "Water"        → ID of the entity whose name == "Water"
+//   "water"        → case-insensitive name match (fallback)
+//
+// If the name is not found in the registry the target defaults to TARGET_ANY.
+// ---------------------------------------------------------------------------
+static int resolveTarget(const nlohmann::json& val) {
+    if (val.is_number_integer()) {
+        return val.get<int>();
+    }
+    if (val.is_string()) {
+        const std::string s = val.get<std::string>();
+        if (s == "EMPTY") return TARGET_EMPTY;
+        if (s == "ANY")   return TARGET_ANY;
+
+        // Try numeric string first ("3" → 3).
+        try {
+            return std::stoi(s);
+        } catch (...) {}
+
+        // Try exact name match in the registry.
+        int id = g_entityRegistry.getByName(s);
+        if (id >= 0) return id;
+
+        // Case-insensitive fallback.
+        for (const auto& kv : g_entityRegistry.all()) {
+            const std::string& n = kv.second.name;
+            if (n.size() == s.size()) {
+                bool same = true;
+                for (size_t i = 0; i < n.size(); ++i)
+                    if (tolower((unsigned char)n[i]) != tolower((unsigned char)s[i]))
+                        { same = false; break; }
+                if (same) return kv.first;
+            }
+        }
+
+        // Name not found — treat as ANY so the rule degrades gracefully.
+        return TARGET_ANY;
+    }
+    return TARGET_ANY;
+}
+
+// ---------------------------------------------------------------------------
 // Condition parsing (recursive)
 // ---------------------------------------------------------------------------
 static Condition parseCondition(const nlohmann::json& j) {
@@ -73,20 +122,10 @@ static Condition parseCondition(const nlohmann::json& j) {
         c.type = COND_ALWAYS;
     }
     else if (type == "NeighborCheck") {
-        c.type        = COND_NEIGHBOR;
-        c.neighborDir = parseDir(j.value("dir", "down"));
-
-        if (j.contains("target")) {
-            const auto& t = j["target"];
-            if (t.is_string()) {
-                std::string ts = t.get<std::string>();
-                if      (ts == "EMPTY") c.neighborTarget = TARGET_EMPTY;
-                else if (ts == "ANY")   c.neighborTarget = TARGET_ANY;
-                else                    c.neighborTarget = std::stoi(ts);
-            } else if (t.is_number_integer()) {
-                c.neighborTarget = t.get<int>();
-            }
-        }
+        c.type           = COND_NEIGHBOR;
+        c.neighborDir    = parseDir(j.value("dir", "down"));
+        if (j.contains("target"))
+            c.neighborTarget = resolveTarget(j["target"]);
     }
     else if (type == "PropertyCheck") {
         c.type    = COND_PROPERTY;
@@ -123,17 +162,8 @@ static Condition parseCondition(const nlohmann::json& j) {
     }
     else if (type == "NeighborCount") {
         c.type = COND_NEIGHBOR_COUNT;
-        if (j.contains("target")) {
-            const auto& t = j["target"];
-            if (t.is_string()) {
-                std::string ts = t.get<std::string>();
-                if      (ts == "EMPTY") c.countTarget = TARGET_EMPTY;
-                else if (ts == "ANY")   c.countTarget = TARGET_ANY;
-                else                    c.countTarget = std::stoi(ts);
-            } else if (t.is_number_integer()) {
-                c.countTarget = t.get<int>();
-            }
-        }
+        if (j.contains("target"))
+            c.countTarget = resolveTarget(j["target"]);
         c.countOp  = j.value("op",  ">=");
         c.countVal = j.value("val", 1);
     }
@@ -160,13 +190,19 @@ static Action parseAction(const nlohmann::json& j) {
                 a.dirs.push_back(parseDir(d.get<std::string>()));
     }
     else if (type == "Transform") {
-        a.type           = ACTION_TRANSFORM;
-        a.targetEntityId = j.value("targetId", 0);
+        a.type = ACTION_TRANSFORM;
+        if (j.contains("targetId")) {
+            int r = resolveTarget(j["targetId"]);
+            a.targetEntityId = (r >= 0) ? r : 0;
+        }
     }
     else if (type == "Spawn") {
-        a.type           = ACTION_SPAWN;
-        a.targetEntityId = j.value("targetId", 0);
-        a.spawnDir       = parseDir(j.value("dir", "up"));
+        a.type = ACTION_SPAWN;
+        if (j.contains("targetId")) {
+            int r = resolveTarget(j["targetId"]);
+            a.targetEntityId = (r >= 0) ? r : 0;
+        }
+        a.spawnDir = parseDir(j.value("dir", "up"));
     }
     else if (type == "Destroy") {
         a.type = ACTION_DESTROY;
@@ -176,6 +212,34 @@ static Action parseAction(const nlohmann::json& j) {
         a.modVarName = j.value("varName", "");
         a.modOp      = j.value("op",      "+=");
         a.modVal     = j.value("val",     0.0f);
+    }
+    else if (type == "Eat" || type == "EatFirst") {
+        a.type = (type == "Eat") ? ACTION_EAT : ACTION_EAT_FIRST;
+        if (j.contains("target"))
+            a.eatTarget = resolveTarget(j["target"]);
+        a.gainVar = j.value("gainVar", "");
+        a.gainVal = j.value("gainVal", 0.0f);
+        if (type == "Eat") {
+            a.dir = parseDir(j.value("dir", "up"));
+        } else {
+            a.randomizeDirs = j.value("randomize", true);
+            if (j.contains("dirs"))
+                for (const auto& d : j["dirs"])
+                    a.dirs.push_back(parseDir(d.get<std::string>()));
+        }
+    }
+    else if (type == "Swap" || type == "SwapFirst") {
+        a.type = (type == "Swap") ? ACTION_SWAP : ACTION_SWAP_FIRST;
+        if (j.contains("target"))
+            a.swapTarget = resolveTarget(j["target"]);
+        if (type == "Swap") {
+            a.dir = parseDir(j.value("dir", "up"));
+        } else {
+            a.randomizeDirs = j.value("randomize", true);
+            if (j.contains("dirs"))
+                for (const auto& d : j["dirs"])
+                    a.dirs.push_back(parseDir(d.get<std::string>()));
+        }
     }
 
     return a;
