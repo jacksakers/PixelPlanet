@@ -87,7 +87,7 @@ const S = {
   },
 };
 
-export default function Sidebar() {
+export default function Sidebar({ selectedType }) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState(TAB_ENTITIES);
 
@@ -121,7 +121,7 @@ export default function Sidebar() {
 
       {/* Content */}
       <div style={S.content}>
-        {tab === TAB_ENTITIES && <EntityManager />}
+        {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} />}
         {tab === TAB_RULES    && <RuleManager />}
         {tab === TAB_SETTINGS && <SettingsPanel />}
       </div>

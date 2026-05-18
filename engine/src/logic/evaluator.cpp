@@ -237,21 +237,25 @@ static bool execAction(int x, int y, const Action& a) {
 
 // Execute a rule: evaluate condition, then run actions.
 // Returns true if the rule fired and at least one action succeeded.
-// Stops executing further actions after the first movement action succeeds
-// (since the cell is no longer at (x,y) in the write buffer).
-static bool execRule(const Rule& rule, int x, int y, uint8_t cellId) {
+// *movedOut (optional) is set to true if a movement action succeeded
+// (which means the cell is no longer at (x,y) in the write buffer).
+static bool execRule(const Rule& rule, int x, int y, uint8_t cellId, bool* movedOut = nullptr) {
     if (!evalCondition(rule.condition, x, y, cellId)) return false;
 
     bool anyApplied = false;
+    bool didMove    = false;
     for (const auto& action : rule.actions) {
         bool applied = execAction(x, y, action);
         if (applied) {
             anyApplied = true;
             // If a movement action succeeded, the pixel is gone from (x,y).
-            if (action.type == ACTION_MOVE || action.type == ACTION_MOVE_FIRST)
+            if (action.type == ACTION_MOVE || action.type == ACTION_MOVE_FIRST) {
+                didMove = true;
                 break;
+            }
         }
     }
+    if (movedOut) *movedOut = didMove;
     return anyApplied;
 }
 
@@ -293,11 +297,17 @@ void evaluateTick() {
 
             // ------------------------------------------------------------------
             // 2. Entity-specific rules — diagonal spread, sideways flow, etc.
+            // All non-movement rules are allowed to fire in the same tick.
+            // We only stop if a movement action moves the cell away.
             // ------------------------------------------------------------------
             if (!moved) {
                 for (const auto& [eid, rule] : g_ruleSet.entityRules) {
                     if (eid != static_cast<int>(cellId)) continue;
-                    if (execRule(rule, x, y, cellId)) break;
+                    // Stop if a previous rule destroyed this cell.
+                    if (g_grid.write[g_grid.idx(x, y)] == EMPTY_ID) break;
+                    bool cellMoved = false;
+                    execRule(rule, x, y, cellId, &cellMoved);
+                    if (cellMoved) break;
                 }
             }
         }

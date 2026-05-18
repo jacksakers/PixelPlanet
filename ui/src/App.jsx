@@ -39,7 +39,7 @@ function AppInner() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0d0d16' }}>
       <Toolbar selectedType={selectedType} onSelectType={handleSelectType} brushSize={brushSize} onBrushSize={handleBrushSize} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar />
+        <Sidebar selectedType={selectedType} />
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <SimCanvas selectedTypeRef={selectedTypeRef} brushSizeRef={brushSizeRef} />
         </div>
