@@ -38,6 +38,7 @@
 #include "parser.hpp"
 #include "rule.hpp"
 #include "../core/entity.hpp"
+#include "../core/grid.hpp"
 #include "../core/types.hpp"
 #include "../extern/json.hpp"
 
@@ -114,6 +115,28 @@ static Condition parseCondition(const nlohmann::json& j) {
         if (j.contains("child"))
             c.children.push_back(parseCondition(j["child"]));
     }
+    else if (type == "VariableCheck") {
+        c.type    = COND_VARIABLE;
+        c.varName = j.value("varName", "");
+        c.propOp  = j.value("op", ">");
+        c.propVal = j.value("val", 0.0f);
+    }
+    else if (type == "NeighborCount") {
+        c.type = COND_NEIGHBOR_COUNT;
+        if (j.contains("target")) {
+            const auto& t = j["target"];
+            if (t.is_string()) {
+                std::string ts = t.get<std::string>();
+                if      (ts == "EMPTY") c.countTarget = TARGET_EMPTY;
+                else if (ts == "ANY")   c.countTarget = TARGET_ANY;
+                else                    c.countTarget = std::stoi(ts);
+            } else if (t.is_number_integer()) {
+                c.countTarget = t.get<int>();
+            }
+        }
+        c.countOp  = j.value("op",  ">=");
+        c.countVal = j.value("val", 1);
+    }
 
     return c;
 }
@@ -147,6 +170,12 @@ static Action parseAction(const nlohmann::json& j) {
     }
     else if (type == "Destroy") {
         a.type = ACTION_DESTROY;
+    }
+    else if (type == "ModifyVariable") {
+        a.type       = ACTION_MODIFY_VARIABLE;
+        a.modVarName = j.value("varName", "");
+        a.modOp      = j.value("op",      "+=");
+        a.modVal     = j.value("val",     0.0f);
     }
 
     return a;
@@ -198,6 +227,19 @@ bool parseConfig(const char* jsonStr) {
                     def.color[1] = static_cast<uint8_t>(e["color"][1].get<int>());
                     def.color[2] = static_cast<uint8_t>(e["color"][2].get<int>());
                     def.color[3] = static_cast<uint8_t>(e["color"][3].get<int>());
+                }
+
+                // Parse named variables (up to NUM_VARS_PER_CELL).
+                if (e.contains("variables") && e["variables"].is_array()) {
+                    int slot = 0;
+                    for (const auto& v : e["variables"]) {
+                        if (slot >= NUM_VARS_PER_CELL) break;
+                        VarDef vd;
+                        vd.name       = v.value("name",         "");
+                        vd.defaultVal = static_cast<uint16_t>(v.value("defaultVal", 0));
+                        vd.slot       = slot++;
+                        def.variables.push_back(vd);
+                    }
                 }
 
                 g_entityRegistry.registerEntity(def);

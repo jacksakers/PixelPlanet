@@ -2,7 +2,7 @@
  * EntityManager/EntityEditor.jsx
  *
  * Form for editing a single entity definition: name, colour, density,
- * isStatic.  Fires useSimContext actions on every change for live preview.
+ * isStatic, and named per-cell variables.
  */
 
 import { useState, useEffect } from 'react';
@@ -29,14 +29,15 @@ const field = {
   },
 };
 
+const MAX_VARS = 4;
+
 export default function EntityEditor({ entityId }) {
   const { entities, updateEntity, deleteEntity } = useSimContext();
   const entity = entities.find((e) => e.id === entityId);
 
-  // Local draft so every keypress doesn't hammer the context.
   const [draft, setDraft] = useState(null);
   useEffect(() => {
-    setDraft(entity ? { ...entity } : null);
+    setDraft(entity ? { ...entity, variables: entity.variables ?? [] } : null);
   }, [entityId, entity?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!draft) return <p style={{ color: '#555', fontSize: '0.8rem' }}>Select an entity to edit.</p>;
@@ -47,13 +48,29 @@ export default function EntityEditor({ entityId }) {
     updateEntity(next);
   }
 
-  // hex ↔ [r,g,b] helpers (ignores alpha for the picker)
   function colorToHex([r, g, b]) {
     return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
   }
   function hexToColor(hex) {
     const n = parseInt(hex.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255, draft.color[3]];
+  }
+
+  // ── Variable helpers ─────────────────────────────────────────────────────
+  function addVariable() {
+    if ((draft.variables ?? []).length >= MAX_VARS) return;
+    const vars = [...(draft.variables ?? []), { name: 'var' + ((draft.variables?.length ?? 0) + 1), defaultVal: 0 }];
+    commit({ variables: vars });
+  }
+  function updateVariable(i, partial) {
+    const vars = [...(draft.variables ?? [])];
+    vars[i] = { ...vars[i], ...partial };
+    commit({ variables: vars });
+  }
+  function removeVariable(i) {
+    const vars = [...(draft.variables ?? [])];
+    vars.splice(i, 1);
+    commit({ variables: vars });
   }
 
   return (
@@ -143,6 +160,67 @@ export default function EntityEditor({ entityId }) {
         />
         Static (immovable, no rule evaluation)
       </label>
+
+      {/* ── Variables ───────────────────────────────────────────────────── */}
+      <div style={{ borderTop: '1px solid #2a2a3a', paddingTop: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: '0.72rem', color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            Variables ({(draft.variables ?? []).length}/{MAX_VARS})
+          </span>
+          {(draft.variables ?? []).length < MAX_VARS && (
+            <button
+              onClick={addVariable}
+              style={{
+                background: 'none', border: '1px solid #3a3a55', borderRadius: 5,
+                color: '#778', cursor: 'pointer', fontSize: '0.72rem', padding: '2px 8px',
+              }}
+            >
+              + Add
+            </button>
+          )}
+        </div>
+
+        {(draft.variables ?? []).length === 0 && (
+          <p style={{ fontSize: '0.74rem', color: '#444', margin: 0 }}>
+            No variables. Add up to 4 named integers (0–65535) per cell.
+          </p>
+        )}
+
+        {(draft.variables ?? []).map((v, i) => (
+          <div key={i} style={{
+            display: 'flex', gap: 5, alignItems: 'center', marginBottom: 5,
+            padding: '4px 6px', background: '#1a1a2e', borderRadius: 5, border: '1px solid #2a2a3a',
+          }}>
+            <input
+              style={{ ...field.input, flex: 2, padding: '3px 5px', fontSize: '0.76rem' }}
+              value={v.name}
+              placeholder="name"
+              onChange={(e) => updateVariable(i, { name: e.target.value })}
+            />
+            <input
+              type="number"
+              min={0} max={65535}
+              style={{ ...field.input, flex: 1, padding: '3px 5px', fontSize: '0.76rem' }}
+              value={v.defaultVal}
+              title="Default value (0–65535)"
+              onChange={(e) => updateVariable(i, { defaultVal: Math.max(0, Math.min(65535, parseInt(e.target.value) || 0)) })}
+            />
+            <button
+              onClick={() => removeVariable(i)}
+              style={{
+                background: 'none', border: '1px solid #552222', borderRadius: 4,
+                color: '#aa4444', cursor: 'pointer', fontSize: '0.7rem', padding: '1px 5px',
+              }}
+            >✕</button>
+          </div>
+        ))}
+
+        {(draft.variables ?? []).length > 0 && (
+          <p style={{ fontSize: '0.7rem', color: '#444', margin: '2px 0 0' }}>
+            name · default — use in VariableCheck conditions &amp; ModifyVariable actions
+          </p>
+        )}
+      </div>
     </div>
   );
 }

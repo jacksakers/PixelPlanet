@@ -32,9 +32,9 @@ const BRUSH_RADIUS = 3;
  * SimCanvas
  * Props:
  *   selectedTypeRef  - React.MutableRefObject<number>
- *                      Live ref to the currently selected pixel type.
+ *   brushSizeRef     - React.MutableRefObject<number>  (radius in cells)
  */
-export default function SimCanvas({ selectedTypeRef }) {
+export default function SimCanvas({ selectedTypeRef, brushSizeRef }) {
   const canvasRef    = useRef(null);
   const modRef       = useRef(null);
   const rafRef       = useRef(null);
@@ -111,10 +111,11 @@ export default function SimCanvas({ selectedTypeRef }) {
 
           if (mouseRef.current.down) {
             const { x, y } = mouseRef.current;
-            const type = selectedTypeRef.current;
-            for (let dy = -BRUSH_RADIUS; dy <= BRUSH_RADIUS; dy++) {
-              for (let dx = -BRUSH_RADIUS; dx <= BRUSH_RADIUS; dx++) {
-                if (dx * dx + dy * dy <= BRUSH_RADIUS * BRUSH_RADIUS) {
+            const type   = selectedTypeRef.current;
+            const radius = brushSizeRef?.current ?? BRUSH_RADIUS;
+            for (let dy = -radius; dy <= radius; dy++) {
+              for (let dx = -radius; dx <= radius; dx++) {
+                if (dx * dx + dy * dy <= radius * radius) {
                   engineSetPixel(mod, x + dx, y + dy, type);
                 }
               }

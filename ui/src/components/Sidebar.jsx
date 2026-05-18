@@ -8,11 +8,13 @@
 import { useState } from 'react';
 import EntityManager from './EntityManager/index.jsx';
 import RuleManager   from './RuleManager/index.jsx';
+import SettingsPanel from './SettingsPanel.jsx';
 
 const TAB_ENTITIES = 'entities';
 const TAB_RULES    = 'rules';
+const TAB_SETTINGS = 'settings';
 
-const WIDTH = 300;
+const WIDTH = 360;
 
 const S = {
   sidebar: (collapsed) => ({
@@ -114,12 +116,14 @@ export default function Sidebar() {
       <div style={S.tabs}>
         <button style={S.tab(tab === TAB_ENTITIES)} onClick={() => setTab(TAB_ENTITIES)}>Entities</button>
         <button style={S.tab(tab === TAB_RULES)}    onClick={() => setTab(TAB_RULES)}>Rules</button>
+        <button style={S.tab(tab === TAB_SETTINGS)} onClick={() => setTab(TAB_SETTINGS)}>⚙</button>
       </div>
 
       {/* Content */}
       <div style={S.content}>
         {tab === TAB_ENTITIES && <EntityManager />}
         {tab === TAB_RULES    && <RuleManager />}
+        {tab === TAB_SETTINGS && <SettingsPanel />}
       </div>
     </div>
   );

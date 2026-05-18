@@ -34,9 +34,9 @@ export function nextEntityId(entities) {
 // Default entities
 // ---------------------------------------------------------------------------
 export const DEFAULT_ENTITIES = [
-  { id: 1, name: 'Sand',  color: [220, 180,  60, 255], density: 2.0, isStatic: false },
-  { id: 2, name: 'Water', color: [ 30, 100, 220, 200], density: 1.0, isStatic: false },
-  { id: 3, name: 'Stone', color: [120, 120, 130, 255], density: 0.0, isStatic: true  },
+  { id: 1, name: 'Sand',  color: [220, 180,  60, 255], density: 2.0, isStatic: false, variables: [] },
+  { id: 2, name: 'Water', color: [ 30, 100, 220, 200], density: 1.0, isStatic: false, variables: [] },
+  { id: 3, name: 'Stone', color: [120, 120, 130, 255], density: 0.0, isStatic: true,  variables: [] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -119,19 +119,138 @@ export const BLANK_RULE = {
   actions: [],
 };
 
+// ---------------------------------------------------------------------------
+// LocalStorage key
+// ---------------------------------------------------------------------------
+export const STORAGE_KEY = 'pixelplanet_config_v1';
+
+// ---------------------------------------------------------------------------
+// Load / save helpers
+// ---------------------------------------------------------------------------
+export function saveToStorage(entities, globalRules, entityRules) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ entities, globalRules, entityRules }));
+  } catch (_) { /* storage full / unavailable */ }
+}
+
+export function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Basic sanity check
+    if (!Array.isArray(parsed.entities)) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function clearStorage() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// ---------------------------------------------------------------------------
+// Import / export  (entity group = entities + their rules bundled together)
+// ---------------------------------------------------------------------------
+/**
+ * Export a subset of entities and their rules as a portable JSON string.
+ * @param {Array}  entities    - array of EntityDef objects to include
+ * @param {Object} entityRules - full entityRules map (only selected entities exported)
+ * @param {Array}  [globalRules] - optional global rules to include
+ */
+export function exportBundle(entities, entityRules, globalRules = []) {
+  const bundle = {
+    version: 1,
+    entities,
+    globalRules,
+    entityRules: Object.fromEntries(
+      entities.map((e) => [String(e.id), entityRules[e.id] ?? []])
+    ),
+  };
+  return JSON.stringify(bundle, null, 2);
+}
+
+/**
+ * Import a bundle JSON string.
+ * Returns { entities, globalRules, entityRules } or null on error.
+ * Entity IDs are re-mapped to avoid conflicts with the existing entity list.
+ */
+export function importBundle(jsonStr, existingEntities) {
+  try {
+    const bundle = JSON.parse(jsonStr);
+    if (!Array.isArray(bundle.entities)) return null;
+
+    const usedIds = new Set(existingEntities.map((e) => e.id));
+    const idMap   = {};  // old id → new id
+
+    // Assign fresh IDs for any entity that would conflict.
+    let nextId = 1;
+    const remapped = bundle.entities.map((e) => {
+      while (usedIds.has(nextId)) nextId++;
+      idMap[e.id] = nextId;
+      usedIds.add(nextId);
+      return { ...e, id: nextId++, variables: e.variables ?? [] };
+    });
+
+    // Remap entity IDs inside rules (targetId fields etc.)
+    function remapCondition(c) {
+      if (!c) return c;
+      const nc = { ...c };
+      if (nc.children) nc.children = nc.children.map(remapCondition);
+      return nc;
+    }
+    function remapAction(a) {
+      const na = { ...a };
+      if (na.targetId != null && idMap[na.targetId] != null)
+        na.targetId = idMap[na.targetId];
+      return na;
+    }
+    function remapRule(r) {
+      return {
+        ...r,
+        id: newRuleId(r.id ?? 'rule'),
+        condition: remapCondition(r.condition),
+        actions: (r.actions ?? []).map(remapAction),
+      };
+    }
+
+    const entityRules = {};
+    for (const e of remapped) {
+      const oldId = Object.keys(idMap).find((k) => idMap[k] === e.id);
+      const rules = bundle.entityRules?.[String(oldId)] ?? [];
+      entityRules[e.id] = rules.map(remapRule);
+    }
+
+    const globalRules = (bundle.globalRules ?? []).map(remapRule);
+
+    return { entities: remapped, globalRules, entityRules };
+  } catch (_) {
+    return null;
+  }
+}
+
 export const DIRECTIONS = [
   'up', 'down', 'left', 'right',
   'up-left', 'up-right', 'down-left', 'down-right',
 ];
 
 export const CONDITION_TYPES = [
-  'Always', 'NeighborCheck', 'PropertyCheck', 'Chance', 'AND', 'OR', 'NOT',
+  'Always', 'NeighborCheck', 'PropertyCheck', 'VariableCheck',
+  'NeighborCount', 'Chance', 'AND', 'OR', 'NOT',
 ];
 
 export const ACTION_TYPES = [
-  'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy',
+  'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
 ];
 
 export const PROPERTY_OPS = ['<', '<=', '==', '!=', '>', '>='];
 export const BUILT_IN_PROPS = ['density'];
 export const TRIGGERS = ['OnTick', 'OnRandomTick'];
+
+export const MODIFY_OPS = [
+  { value: '+=',  label: 'Add (+)' },
+  { value: '-=',  label: 'Subtract (-)' },
+  { value: '*=',  label: 'Multiply (×)' },
+  { value: 'set', label: 'Set (=)' },
+];

@@ -16,11 +16,14 @@ import {
   useContext,
   useReducer,
   useMemo,
+  useEffect,
 } from 'react';
 import {
   DEFAULT_ENTITIES,
   DEFAULT_GLOBAL_RULES,
   DEFAULT_ENTITY_RULES,
+  saveToStorage,
+  loadFromStorage,
 } from '../shared/defaults.js';
 
 // ---------------------------------------------------------------------------
@@ -29,13 +32,25 @@ import {
 const SimContext = createContext(null);
 
 // ---------------------------------------------------------------------------
-// Initial state
+// Initial state — prefer localStorage over hardcoded defaults
 // ---------------------------------------------------------------------------
-const initialState = {
-  entities:    DEFAULT_ENTITIES,
-  globalRules: DEFAULT_GLOBAL_RULES,
-  entityRules: DEFAULT_ENTITY_RULES,
-};
+function loadInitialState() {
+  const saved = loadFromStorage();
+  if (saved) {
+    return {
+      entities:    saved.entities    ?? DEFAULT_ENTITIES,
+      globalRules: saved.globalRules ?? DEFAULT_GLOBAL_RULES,
+      entityRules: saved.entityRules ?? DEFAULT_ENTITY_RULES,
+    };
+  }
+  return {
+    entities:    DEFAULT_ENTITIES,
+    globalRules: DEFAULT_GLOBAL_RULES,
+    entityRules: DEFAULT_ENTITY_RULES,
+  };
+}
+
+const initialState = loadInitialState();
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -86,6 +101,30 @@ function reducer(state, action) {
     case 'GLOBAL_RULES_REORDER':
       return { ...state, globalRules: action.rules };
 
+    // ── Import / Reset ───────────────────────────────────────────────────────
+    case 'IMPORT_CONFIG':
+      return {
+        entities:    action.entities    ?? state.entities,
+        globalRules: action.globalRules ?? state.globalRules,
+        entityRules: action.entityRules ?? state.entityRules,
+      };
+
+    case 'MERGE_IMPORT':
+      // Append imported entities and their rules, merging global rules.
+      return {
+        ...state,
+        entities:    [...state.entities, ...action.entities],
+        globalRules: [...state.globalRules, ...action.globalRules],
+        entityRules: { ...state.entityRules, ...action.entityRules },
+      };
+
+    case 'RESET_DEFAULTS':
+      return {
+        entities:    DEFAULT_ENTITIES,
+        globalRules: DEFAULT_GLOBAL_RULES,
+        entityRules: DEFAULT_ENTITY_RULES,
+      };
+
     // ── Entity Rules ────────────────────────────────────────────────────────
     case 'ENTITY_RULE_ADD': {
       const prev = state.entityRules[action.entityId] ?? [];
@@ -130,6 +169,11 @@ function reducer(state, action) {
 export function SimProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // Auto-save to localStorage whenever config changes.
+  useEffect(() => {
+    saveToStorage(state.entities, state.globalRules, state.entityRules);
+  }, [state.entities, state.globalRules, state.entityRules]);
+
   // Stable action creators — never recreated after mount.
   const actions = useMemo(() => ({
     addEntity:          (entity)              => dispatch({ type: 'ENTITY_ADD',           entity }),
@@ -142,6 +186,9 @@ export function SimProvider({ children }) {
     addEntityRule:      (entityId, rule)      => dispatch({ type: 'ENTITY_RULE_ADD',      entityId, rule }),
     updateEntityRule:   (entityId, rule)      => dispatch({ type: 'ENTITY_RULE_UPDATE',   entityId, rule }),
     deleteEntityRule:   (entityId, ruleId)    => dispatch({ type: 'ENTITY_RULE_DELETE',   entityId, ruleId }),
+    importConfig:       (cfg)                 => dispatch({ type: 'IMPORT_CONFIG',        ...cfg }),
+    mergeImport:        (cfg)                 => dispatch({ type: 'MERGE_IMPORT',         ...cfg }),
+    resetDefaults:      ()                    => dispatch({ type: 'RESET_DEFAULTS' }),
   }), []);
 
   // Pre-built RGBA color table: colorTable[id * 4 .. id * 4 + 3] = [r, g, b, a]

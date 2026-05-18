@@ -66,7 +66,7 @@ const S = {
   },
 };
 
-export default function RuleEditor({ rule, onSave, onCancel }) {
+export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
   const [draft, setDraft] = useState(() => ({
     id:        rule?.id        ?? newRuleId(),
     trigger:   rule?.trigger   ?? 'OnTick',
@@ -129,6 +129,7 @@ export default function RuleEditor({ rule, onSave, onCancel }) {
         <ConditionEditor
           condition={draft.condition}
           onChange={(c) => setDraft((d) => ({ ...d, condition: c }))}
+          entityId={entityId}
         />
       </div>
 
@@ -139,6 +140,7 @@ export default function RuleEditor({ rule, onSave, onCancel }) {
           <ActionEditor
             key={i}
             action={a}
+            entityId={entityId}
             onChange={(a) => updateAction(i, a)}
             onDelete={() => deleteAction(i)}
           />

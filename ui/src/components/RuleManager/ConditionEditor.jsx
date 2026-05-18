@@ -79,7 +79,28 @@ function TargetSelect({ value, onChange }) {
   );
 }
 
-export default function ConditionEditor({ condition, onChange, onDelete, depth = 0 }) {
+/** Variable name dropdown — lists variables from a given entity. */
+function VarNameSelect({ entityId, value, onChange }) {
+  const { entities } = useSimContext();
+  const entity = entities.find((e) => e.id === entityId);
+  const vars   = entity?.variables ?? [];
+  // Also gather vars from all entities for global context (entityId may be null).
+  const allVars = entityId == null
+    ? [...new Set(entities.flatMap((e) => (e.variables ?? []).map((v) => v.name)))]
+    : vars.map((v) => v.name);
+
+  if (allVars.length === 0) {
+    return <span style={{ fontSize: '0.72rem', color: '#555' }}>(add variables to entity first)</span>;
+  }
+  return (
+    <select style={S.sel} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">— var —</option>
+      {allVars.map((name) => <option key={name} value={name}>{name}</option>)}
+    </select>
+  );
+}
+
+export default function ConditionEditor({ condition, onChange, onDelete, depth = 0, entityId }) {
   function set(partial) { onChange({ ...condition, ...partial }); }
 
   function addChild() {
@@ -144,6 +165,47 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
           </>
         )}
 
+        {/* VariableCheck — check per-cell variable */}
+        {condition.type === 'VariableCheck' && (
+          <>
+            <VarNameSelect
+              entityId={entityId}
+              value={condition.varName}
+              onChange={(v) => set({ varName: v })}
+            />
+            <select style={S.sel} value={condition.op ?? '>'} onChange={(e) => set({ op: e.target.value })}>
+              {PROPERTY_OPS.map((o) => <option key={o}>{o}</option>)}
+            </select>
+            <input
+              style={S.inp}
+              type="number"
+              step="1"
+              value={condition.val ?? 0}
+              onChange={(e) => set({ val: parseFloat(e.target.value) || 0 })}
+            />
+          </>
+        )}
+
+        {/* NeighborCount — count matching neighbours */}
+        {condition.type === 'NeighborCount' && (
+          <>
+            <TargetSelect
+              value={condition.target ?? 'ANY'}
+              onChange={(v) => set({ target: v })}
+            />
+            <select style={S.sel} value={condition.op ?? '>='} onChange={(e) => set({ op: e.target.value })}>
+              {PROPERTY_OPS.map((o) => <option key={o}>{o}</option>)}
+            </select>
+            <input
+              style={S.inp}
+              type="number"
+              min={0} max={8} step={1}
+              value={condition.val ?? 1}
+              onChange={(e) => set({ val: parseInt(e.target.value) || 0 })}
+            />
+          </>
+        )}
+
         {/* Chance field */}
         {condition.type === 'Chance' && (
           <>
@@ -174,6 +236,7 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
               onChange={(c) => updateChild(i, c)}
               onDelete={() => removeChild(i)}
               depth={depth + 1}
+              entityId={entityId}
             />
           ))}
           <button style={{ ...S.addBtn, alignSelf: 'flex-start', marginLeft: depth * 14 + 4 }} onClick={addChild}>
@@ -188,6 +251,7 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
           condition={(condition.children ?? [])[0] ?? { type: 'Always' }}
           onChange={(c) => set({ children: [c] })}
           depth={depth + 1}
+          entityId={entityId}
         />
       )}
     </div>

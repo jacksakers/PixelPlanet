@@ -39,8 +39,13 @@ uint8_t* engine_get_cells() {
 
 EMSCRIPTEN_KEEPALIVE
 void engine_set_pixel(int x, int y, uint8_t type) {
-    if (g_grid.valid(x, y))
-        g_grid.read[g_grid.idx(x, y)] = type;
+    if (!g_grid.valid(x, y)) return;
+    int i = g_grid.idx(x, y);
+    g_grid.read[i] = type;
+    // Initialise per-cell vars to entity defaults.
+    const EntityDef* def = g_entityRegistry.get(static_cast<int>(type));
+    for (int s = 0; s < 4; ++s)
+        g_grid.vars_read[i * 4 + s] = def ? def->getVarDefault(s) : 0;
 }
 
 EMSCRIPTEN_KEEPALIVE

@@ -8,11 +8,18 @@ import { SimProvider, useSimContext } from './store/SimContext.jsx';
 function AppInner() {
   const [selectedType, setSelectedType] = useState(PIXEL_SAND);
   const selectedTypeRef = useRef(PIXEL_SAND);
+  const [brushSize, setBrushSize] = useState(3);
+  const brushSizeRef = useRef(3);
   const { entities } = useSimContext();
 
   const handleSelectType = useCallback((type) => {
     selectedTypeRef.current = type;
     setSelectedType(type);
+  }, []);
+
+  const handleBrushSize = useCallback((size) => {
+    brushSizeRef.current = size;
+    setBrushSize(size);
   }, []);
 
   // Keyboard shortcuts — keys 1-9 map to entity IDs in order, last key = erase.
@@ -30,11 +37,11 @@ function AppInner() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0d0d16' }}>
-      <Toolbar selectedType={selectedType} onSelectType={handleSelectType} />
+      <Toolbar selectedType={selectedType} onSelectType={handleSelectType} brushSize={brushSize} onBrushSize={handleBrushSize} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          <SimCanvas selectedTypeRef={selectedTypeRef} />
+          <SimCanvas selectedTypeRef={selectedTypeRef} brushSizeRef={brushSizeRef} />
         </div>
       </div>
     </div>

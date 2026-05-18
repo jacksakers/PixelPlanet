@@ -5,7 +5,7 @@
  */
 
 import { useSimContext } from '../../store/SimContext.jsx';
-import { ACTION_TYPES, DIRECTIONS } from '../../shared/defaults.js';
+import { ACTION_TYPES, DIRECTIONS, MODIFY_OPS } from '../../shared/defaults.js';
 
 const S = {
   wrap: {
@@ -54,7 +54,23 @@ function EntitySelect({ value, onChange }) {
   );
 }
 
-export default function ActionEditor({ action, onChange, onDelete }) {
+/** Dropdown of variable names from a given entity. */
+function VarSelect({ entityId, value, onChange, entities }) {
+  const entity = entities?.find((e) => e.id === entityId);
+  const vars   = entity?.variables ?? [];
+  if (vars.length === 0) {
+    return <span style={{ fontSize: '0.74rem', color: '#666' }}>(no variables on entity)</span>;
+  }
+  return (
+    <select style={S.sel} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">— var —</option>
+      {vars.map((v) => <option key={v.name} value={v.name}>{v.name}</option>)}
+    </select>
+  );
+}
+
+export default function ActionEditor({ action, onChange, onDelete, entityId }) {
+  const { entities } = useSimContext();
   function set(partial) { onChange({ ...action, ...partial }); }
 
   function addDir() { set({ dirs: [...(action.dirs ?? []), 'down'] }); }
@@ -124,6 +140,28 @@ export default function ActionEditor({ action, onChange, onDelete }) {
           <select style={S.sel} value={action.dir ?? 'up'} onChange={(e) => set({ dir: e.target.value })}>
             {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
           </select>
+        </>
+      )}
+
+      {/* ModifyVariable — pick variable, operator, amount */}
+      {action.type === 'ModifyVariable' && (
+        <>
+          <VarSelect
+            entityId={entityId}
+            value={action.varName}
+            onChange={(v) => set({ varName: v })}
+            entities={entities}
+          />
+          <select style={S.sel} value={action.op ?? '+='} onChange={(e) => set({ op: e.target.value })}>
+            {MODIFY_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <input
+            style={{ ...S.sel, width: 60 }}
+            type="number"
+            step="1"
+            value={action.val ?? 1}
+            onChange={(e) => set({ val: parseFloat(e.target.value) || 0 })}
+          />
         </>
       )}
 

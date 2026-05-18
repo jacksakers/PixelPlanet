@@ -23,6 +23,9 @@ Write-Host "  PixelPlanet - Dev Server" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor DarkCyan
 Write-Host ""
 
+# Prerequisite: Source Emscripten environment in this shell before running:
+& "C:\Users\PQX863\Documents\side\emsdk\emsdk_env.ps1"
+
 # ---------------------------------------------------------------------------
 # Step 1 - Build WASM engine
 # ---------------------------------------------------------------------------

@@ -33,32 +33,33 @@ inline constexpr int DIR_DY[8] = { -1,  1,  0,  0, -1, -1,  1,  1 };
 enum TriggerType : int {
     TRIGGER_ON_TICK        = 0,
     TRIGGER_ON_RANDOM_TICK = 1,
-    // Phase 3: TRIGGER_ON_SPAWN, TRIGGER_ON_DEATH, TRIGGER_ON_COLLISION
 };
 
 // ---------------------------------------------------------------------------
 // Condition types
 // ---------------------------------------------------------------------------
 enum ConditionType : int {
-    COND_ALWAYS   = 0,  // Always true
-    COND_NEIGHBOR = 1,  // Check neighbouring cell type
-    COND_PROPERTY = 2,  // Check entity property (density, custom vars)
-    COND_CHANCE   = 3,  // Random probability gate
-    COND_AND      = 4,  // All children must pass
-    COND_OR       = 5,  // Any child must pass
-    COND_NOT      = 6,  // Invert single child
+    COND_ALWAYS        = 0,  // Always true
+    COND_NEIGHBOR      = 1,  // Check neighbouring cell type
+    COND_PROPERTY      = 2,  // Check entity built-in property (density)
+    COND_CHANCE        = 3,  // Random probability gate
+    COND_AND           = 4,  // All children must pass
+    COND_OR            = 5,  // Any child must pass
+    COND_NOT           = 6,  // Invert single child
+    COND_VARIABLE      = 7,  // Check per-cell variable (Phase 3)
+    COND_NEIGHBOR_COUNT = 8, // Count matching neighbours (Phase 3)
 };
 
 // ---------------------------------------------------------------------------
 // Action types
 // ---------------------------------------------------------------------------
 enum ActionType : int {
-    ACTION_MOVE       = 0,  // Move to one direction if EMPTY
-    ACTION_MOVE_FIRST = 1,  // Try each dir in list; move to first EMPTY
-    ACTION_TRANSFORM  = 2,  // Replace self with another entity type
-    ACTION_SPAWN      = 3,  // Create a new cell in a neighbouring slot
-    ACTION_DESTROY    = 4,  // Remove self (set to EMPTY)
-    // Phase 3: ACTION_MODIFY_PROPERTY
+    ACTION_MOVE            = 0,  // Move to one direction if EMPTY
+    ACTION_MOVE_FIRST      = 1,  // Try each dir in list; move to first EMPTY
+    ACTION_TRANSFORM       = 2,  // Replace self with another entity type
+    ACTION_SPAWN           = 3,  // Create a new cell in a neighbouring slot
+    ACTION_DESTROY         = 4,  // Remove self (set to EMPTY)
+    ACTION_MODIFY_VARIABLE = 5,  // Mutate a per-cell variable (Phase 3)
 };
 
 // ---------------------------------------------------------------------------

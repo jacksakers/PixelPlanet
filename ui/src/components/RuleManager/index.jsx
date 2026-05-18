@@ -53,9 +53,11 @@ export default function RuleManager() {
 
   const [tab, setTab]             = useState(TAB_GLOBAL);
   const [selectedRuleId, setSelectedRuleId] = useState(null);
-  const [editing, setEditing]     = useState(false);   // show RuleEditor?
-  const [editingNew, setEditingNew] = useState(false); // true = creating new rule
+  const [editing, setEditing]     = useState(false);
+  const [editingNew, setEditingNew] = useState(false);
   const [entityId, setEntityId]   = useState(entities[0]?.id ?? null);
+  const [copyingRuleId, setCopyingRuleId] = useState(null); // id of rule being copied
+  const [copyTargetId, setCopyTargetId]   = useState(null); // target entity for copy
 
   // ── Resolve currently displayed rule list ───────────────────────────────
   const ruleList = tab === TAB_GLOBAL
@@ -75,6 +77,22 @@ export default function RuleManager() {
     setSelectedRuleId(null);
     setEditing(true);
     setEditingNew(true);
+  }
+
+  function handleCopyRule(id) {
+    setCopyingRuleId(id);
+    // Pre-select first other entity as copy target
+    const other = entities.find((e) => e.id !== entityId);
+    setCopyTargetId(other?.id ?? entityId);
+  }
+
+  function handleConfirmCopy() {
+    const rule = ruleList.find((r) => r.id === copyingRuleId);
+    if (rule && copyTargetId != null) {
+      addEntityRule(copyTargetId, { ...rule, id: newRuleId(rule.id) });
+    }
+    setCopyingRuleId(null);
+    setCopyTargetId(null);
   }
 
   function handleSave(rule) {
@@ -131,7 +149,35 @@ export default function RuleManager() {
         onSelect={handleSelect}
         onDelete={handleDelete}
         onAdd={handleAddNew}
+        onCopy={tab === TAB_ENTITY ? handleCopyRule : undefined}
       />
+
+      {/* Copy rule picker */}
+      {copyingRuleId && (
+        <div style={{
+          background: '#1c1c30', border: '1px solid #4455aa', borderRadius: 8,
+          padding: '10px 12px', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <span style={{ fontSize: '0.75rem', color: '#aaccff' }}>Copy rule to entity:</span>
+          <select
+            style={S.sel}
+            value={copyTargetId ?? ''}
+            onChange={(e) => setCopyTargetId(Number(e.target.value))}
+          >
+            {entities.map((e) => <option key={e.id} value={e.id}>{e.name} (ID {e.id})</option>)}
+          </select>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={handleConfirmCopy}
+              style={{ padding: '3px 12px', background: '#2a3a5a', border: '1px solid #4466aa', borderRadius: 5, color: '#aaccff', cursor: 'pointer', fontSize: '0.78rem' }}
+            >Copy</button>
+            <button
+              onClick={() => { setCopyingRuleId(null); setCopyTargetId(null); }}
+              style={{ padding: '3px 10px', background: 'none', border: '1px solid #3a3a55', borderRadius: 5, color: '#888', cursor: 'pointer', fontSize: '0.78rem' }}
+            >Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Rule editor */}
       {editing && (
@@ -140,6 +186,7 @@ export default function RuleManager() {
             rule={editingNew ? null : selectedRule}
             onSave={handleSave}
             onCancel={() => { setEditing(false); setSelectedRuleId(null); }}
+            entityId={tab === TAB_ENTITY ? entityId : null}
           />
         </div>
       )}

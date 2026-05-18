@@ -51,7 +51,6 @@ static bool evalPropertyCheck(uint8_t cellId, const Condition& c) {
     if (c.propName == "density") {
         val = g_entityRegistry.getDensity(static_cast<int>(cellId));
     }
-    // Phase 3: look up custom per-cell variables here.
 
     const auto& op = c.propOp;
     if (op == "<")  return val <  c.propVal;
@@ -61,6 +60,38 @@ static bool evalPropertyCheck(uint8_t cellId, const Condition& c) {
     if (op == ">")  return val >  c.propVal;
     if (op == ">=") return val >= c.propVal;
     return false;
+}
+
+static bool evalVariableCheck(int cellIdx, uint8_t cellId, const Condition& c) {
+    const EntityDef* def = g_entityRegistry.get(static_cast<int>(cellId));
+    if (!def) return false;
+    int slot = def->getVarSlot(c.varName);
+    if (slot < 0) return false;
+    float val = static_cast<float>(g_grid.getVar(cellIdx, slot));
+
+    const auto& op = c.propOp;
+    if (op == "<")  return val <  c.propVal;
+    if (op == "<=") return val <= c.propVal;
+    if (op == "==") return val == c.propVal;
+    if (op == "!=") return val != c.propVal;
+    if (op == ">")  return val >  c.propVal;
+    if (op == ">=") return val >= c.propVal;
+    return false;
+}
+
+// Count matching neighbours (8-neighbourhood)
+static int countNeighbors(int x, int y, int targetId) {
+    int count = 0;
+    for (int dir = 0; dir < 8; ++dir) {
+        int nx = x + DIR_DX[dir];
+        int ny = y + DIR_DY[dir];
+        if (!g_grid.valid(nx, ny)) continue;
+        uint8_t cell = g_grid.write[g_grid.idx(nx, ny)];
+        if (targetId == TARGET_EMPTY && cell == EMPTY_ID)  ++count;
+        else if (targetId == TARGET_ANY && cell != EMPTY_ID) ++count;
+        else if (targetId >= 0 && cell == static_cast<uint8_t>(targetId)) ++count;
+    }
+    return count;
 }
 
 static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId) {
@@ -83,6 +114,19 @@ static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId) {
             return false;
         case COND_NOT:
             return !c.children.empty() && !evalCondition(c.children[0], x, y, cellId);
+        case COND_VARIABLE:
+            return evalVariableCheck(g_grid.idx(x, y), cellId, c);
+        case COND_NEIGHBOR_COUNT: {
+            int n = countNeighbors(x, y, c.countTarget);
+            const auto& op = c.countOp;
+            if (op == "<")  return n <  c.countVal;
+            if (op == "<=") return n <= c.countVal;
+            if (op == "==") return n == c.countVal;
+            if (op == "!=") return n != c.countVal;
+            if (op == ">")  return n >  c.countVal;
+            if (op == ">=") return n >= c.countVal;
+            return false;
+        }
     }
     return false;
 }
@@ -130,7 +174,14 @@ static bool execAction(int x, int y, const Action& a) {
 
         case ACTION_TRANSFORM: {
             int i = g_grid.idx(x, y);
-            g_grid.write[i] = static_cast<uint8_t>(a.targetEntityId);
+            uint8_t newId = static_cast<uint8_t>(a.targetEntityId);
+            g_grid.write[i] = newId;
+            // Reinitialise vars to the new entity's defaults.
+            const EntityDef* def = g_entityRegistry.get(a.targetEntityId);
+            if (def) {
+                for (int s = 0; s < NUM_VARS_PER_CELL; ++s)
+                    g_grid.vars_write[i * NUM_VARS_PER_CELL + s] = def->getVarDefault(s);
+            }
             g_grid.dirty[i] = true;
             return true;
         }
@@ -142,6 +193,12 @@ static bool execAction(int x, int y, const Action& a) {
             int di = g_grid.idx(nx, ny);
             if (g_grid.write[di] != EMPTY_ID) return false;
             g_grid.write[di] = static_cast<uint8_t>(a.targetEntityId);
+            // Initialise vars to the spawned entity's defaults.
+            const EntityDef* def = g_entityRegistry.get(a.targetEntityId);
+            if (def) {
+                for (int s = 0; s < NUM_VARS_PER_CELL; ++s)
+                    g_grid.vars_write[di * NUM_VARS_PER_CELL + s] = def->getVarDefault(s);
+            }
             g_grid.dirty[di] = true;
             return true;
         }
@@ -149,7 +206,29 @@ static bool execAction(int x, int y, const Action& a) {
         case ACTION_DESTROY: {
             int i = g_grid.idx(x, y);
             g_grid.write[i] = EMPTY_ID;
+            for (int s = 0; s < NUM_VARS_PER_CELL; ++s)
+                g_grid.vars_write[i * NUM_VARS_PER_CELL + s] = 0;
             g_grid.dirty[i] = true;
+            return true;
+        }
+
+        case ACTION_MODIFY_VARIABLE: {
+            int i = g_grid.idx(x, y);
+            uint8_t cellId2 = g_grid.write[i];
+            const EntityDef* def = g_entityRegistry.get(static_cast<int>(cellId2));
+            if (!def) return false;
+            int slot = def->getVarSlot(a.modVarName);
+            if (slot < 0) return false;
+            float cur = static_cast<float>(g_grid.vars_write[i * NUM_VARS_PER_CELL + slot]);
+            float next = cur;
+            if      (a.modOp == "+=") next = cur + a.modVal;
+            else if (a.modOp == "-=") next = cur - a.modVal;
+            else if (a.modOp == "*=") next = cur * a.modVal;
+            else                      next = a.modVal;  // "set"
+            // Clamp to uint16_t range.
+            if (next < 0.0f)      next = 0.0f;
+            if (next > 65535.0f)  next = 65535.0f;
+            g_grid.vars_write[i * NUM_VARS_PER_CELL + slot] = static_cast<uint16_t>(next);
             return true;
         }
     }
@@ -183,8 +262,9 @@ void evaluateTick() {
     Grid& g = g_grid;
     if (!g.read) return;
 
-    memcpy(g.write, g.read, static_cast<size_t>(g.size));
-    memset(g.dirty, 0,      static_cast<size_t>(g.size) * sizeof(bool));
+    memcpy(g.write,      g.read,      static_cast<size_t>(g.size));
+    memcpy(g.vars_write, g.vars_read, static_cast<size_t>(g.size) * NUM_VARS_PER_CELL * sizeof(uint16_t));
+    memset(g.dirty,      0,           static_cast<size_t>(g.size) * sizeof(bool));
 
     // Sweep bottom-up so gravity cascades naturally in a single pass.
     // Alternate LTR / RTL per row using the RNG to remove sweep bias.

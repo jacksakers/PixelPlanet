@@ -18,12 +18,21 @@ struct Condition {
     int neighborTarget = TARGET_EMPTY;  // TARGET_EMPTY | TARGET_ANY | entity ID
 
     // COND_PROPERTY
-    std::string propName;  // "density" | future custom variable names
+    std::string propName;  // "density"
     std::string propOp;    // "<" | "<=" | "==" | "!=" | ">" | ">="
     float       propVal = 0.0f;
 
     // COND_CHANCE  (0–100)
     float chance = 100.0f;
+
+    // COND_VARIABLE (Phase 3)
+    std::string varName;   // name of the entity variable to check
+    // re-uses propOp and propVal for comparison
+
+    // COND_NEIGHBOR_COUNT (Phase 3)
+    int  countTarget  = -1;   // TARGET_EMPTY / TARGET_ANY / entity ID
+    std::string countOp;      // same op set as propOp
+    int  countVal     = 0;
 
     // COND_AND | COND_OR | COND_NOT
     std::vector<Condition> children;
@@ -48,7 +57,10 @@ struct Action {
     // ACTION_SPAWN — direction to place the new cell
     Dir spawnDir = DIR_UP;
 
-    // Phase 3: ACTION_MODIFY_PROPERTY fields go here
+    // ACTION_MODIFY_VARIABLE (Phase 3)
+    std::string modVarName;   // variable name to modify
+    std::string modOp;        // "set" | "+=" | "-=" | "*="
+    float       modVal = 0.0f;
 };
 
 // ---------------------------------------------------------------------------
