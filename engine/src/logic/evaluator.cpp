@@ -243,6 +243,15 @@ static bool execAction(int x, int y, const Action& a) {
                 }
                 // Move self into the target cell (consuming it).
                 g_grid.moveTo(x, y, nx, ny);
+                // Optionally fill the vacated source cell with a replacement entity.
+                if (a.eatReplaceWith >= 0) {
+                    int si = g_grid.idx(x, y);
+                    g_grid.write[si] = static_cast<uint8_t>(a.eatReplaceWith);
+                    g_grid.dirty[si] = true;
+                    const EntityDef* rDef = g_entityRegistry.get(a.eatReplaceWith);
+                    for (int s = 0; s < NUM_VARS_PER_CELL; ++s)
+                        g_grid.vars_write[si * NUM_VARS_PER_CELL + s] = rDef ? rDef->getVarDefault(s) : 0;
+                }
                 // Optional variable gain for the eater.
                 if (!a.gainVar.empty() && a.gainVal != 0.0f) {
                     int oi = g_grid.idx(nx, ny); // eater is now at (nx,ny)

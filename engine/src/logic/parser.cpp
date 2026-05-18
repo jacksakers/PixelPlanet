@@ -219,6 +219,11 @@ static Action parseAction(const nlohmann::json& j) {
             a.eatTarget = resolveTarget(j["target"]);
         a.gainVar = j.value("gainVar", "");
         a.gainVal = j.value("gainVal", 0.0f);
+        // replaceWith: entity to spawn at source cell after eating.
+        // Omitted / "EMPTY" → TARGET_EMPTY; entity name/id → that entity.
+        if (j.contains("replaceWith")) {
+            a.eatReplaceWith = resolveTarget(j["replaceWith"]);
+        }
         if (type == "Eat") {
             a.dir = parseDir(j.value("dir", "up"));
         } else {

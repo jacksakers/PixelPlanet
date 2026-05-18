@@ -175,7 +175,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
         </>
       )}
 
-      {/* Eat — single direction, target entity, optional energy gain */}
+      {/* Eat — single direction, target entity, optional energy gain, optional replace */}
       {action.type === 'Eat' && (
         <>
           <select style={S.sel} value={action.dir ?? 'up'} onChange={(e) => set({ dir: e.target.value })}>
@@ -187,6 +187,12 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
             <option value="ANY">ANY</option>
             {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
           </select>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>leave</span>
+          <select style={S.sel} value={String(action.replaceWith ?? 'EMPTY')}
+            onChange={(e) => set({ replaceWith: e.target.value })}>
+            <option value="EMPTY">Empty</option>
+            {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+          </select>
           <span style={{ fontSize: '0.74rem', color: '#888' }}>gain</span>
           <VarSelect entityId={entityId} value={action.gainVar ?? ''} onChange={(v) => set({ gainVar: v })} entities={entities} />
           <input style={{ ...S.sel, width: 48 }} type="number" step="1" value={action.gainVal ?? 0}
@@ -194,7 +200,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
         </>
       )}
 
-      {/* EatFirst — multi-direction, target entity, optional energy gain */}
+      {/* EatFirst — multi-direction, target entity, optional energy gain, optional replace */}
       {action.type === 'EatFirst' && (
         <div style={S.multiDirsWrap}>
           <div style={S.multiDirsRow}>
@@ -202,6 +208,12 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
             <select style={S.sel} value={String(action.target ?? 'ANY')}
               onChange={(e) => set({ target: e.target.value })}>
               <option value="ANY">ANY</option>
+              {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+            </select>
+            <span style={{ fontSize: '0.74rem', color: '#888' }}>leave</span>
+            <select style={S.sel} value={String(action.replaceWith ?? 'EMPTY')}
+              onChange={(e) => set({ replaceWith: e.target.value })}>
+              <option value="EMPTY">Empty</option>
               {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
             </select>
             <span style={{ fontSize: '0.74rem', color: '#888' }}>gain</span>

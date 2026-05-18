@@ -52,10 +52,6 @@ Phase 5: The Visual Scripting UI
 
 Goal: Make it fun and easy to use. Replace the basic forms with a Scratch-like interface.
 
-Node Editor Integration: Integrate a visual block editor (like Google Blockly, React Flow, or a custom canvas-based node UI).
-
-Block to AST Compiler: Write the logic that translates visual blocks connected by the user into the strict JSON format required by the engine.
-
 Entity Manager: Build the UI to create, name, color, and assign properties to custom pixels.
 
 Phase 6: Ecosystem & Sharing

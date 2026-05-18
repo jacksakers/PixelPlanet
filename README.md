@@ -38,7 +38,6 @@ Users define custom pixel entities with unique properties and behaviour rules th
 | Engine  | C++17, Emscripten, WebAssembly |
 | UI      | React 18, Vite 5 |
 | Render  | HTML5 Canvas → WebGL (Phase 4+) |
-| Editor  | React Flow / Google Blockly (Phase 5) |
 
 ---
 
@@ -96,8 +95,8 @@ pixel-planet/
 | Phase | Description | Status |
 |-------|-------------|--------|
 | **1** | High-performance WASM foundation + falling sand demo | ✅ **Done** |
-| 2 | Data-driven engine - JSON rule AST parser | 🔲 Planned |
-| 3 | Variables, lifetimes, boolean logic | 🔲 Planned |
+| **2** | Data-driven engine — JSON rule AST parser | ✅ **Done** |
+| **3** | Variables, lifetimes, boolean logic, Eat/Swap actions, JSON editors, rule reordering | ✅ **Done** |
 | 4 | Chunking, multithreading, double buffering | 🔲 Planned |
 | 5 | Visual scripting UI (Scratch-like node editor) | 🔲 Planned |
 | 6 | Ecosystem sharing, serialisation, blueprints | 🔲 Planned |

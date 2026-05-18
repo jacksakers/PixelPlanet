@@ -9,13 +9,15 @@
  *   onDelete      – (id: string) => void
  *   onAdd         – () => void
  *   onCopy        – (id: string) => void  (optional; shows copy button)
+ *   onMoveUp      – (id: string) => void  (optional; shows reorder buttons)
+ *   onMoveDown    – (id: string) => void  (optional; shows reorder buttons)
  */
 
 const S = {
   row: (selected) => ({
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     padding: '5px 8px',
     borderRadius: 6,
     cursor: 'pointer',
@@ -27,6 +29,10 @@ const S = {
   iconBtn: {
     background: 'none', border: 'none', color: '#556', cursor: 'pointer',
     fontSize: '0.78rem', padding: '0 3px', flexShrink: 0,
+  },
+  orderBtn: {
+    background: 'none', border: '1px solid #2a2a3a', borderRadius: 3, color: '#557', cursor: 'pointer',
+    fontSize: '0.7rem', padding: '0 3px', flexShrink: 0, lineHeight: '16px',
   },
   del: {
     background: 'none', border: 'none', color: '#774', cursor: 'pointer',
@@ -44,14 +50,31 @@ const S = {
   },
 };
 
-export default function RuleList({ rules, selectedId, onSelect, onDelete, onAdd, onCopy }) {
+export default function RuleList({ rules, selectedId, onSelect, onDelete, onAdd, onCopy, onMoveUp, onMoveDown }) {
+  const showOrder = !!(onMoveUp && onMoveDown);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {rules.length === 0 && (
         <p style={{ fontSize: '0.78rem', color: '#444', margin: '4px 0' }}>No rules defined.</p>
       )}
-      {rules.map((r) => (
+      {rules.map((r, idx) => (
         <div key={r.id} style={S.row(r.id === selectedId)} onClick={() => onSelect(r.id)}>
+          {showOrder && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+              <button
+                style={{ ...S.orderBtn, opacity: idx === 0 ? 0.25 : 1 }}
+                disabled={idx === 0}
+                title="Move rule up"
+                onClick={(e) => { e.stopPropagation(); onMoveUp(r.id); }}
+              >▲</button>
+              <button
+                style={{ ...S.orderBtn, opacity: idx === rules.length - 1 ? 0.25 : 1 }}
+                disabled={idx === rules.length - 1}
+                title="Move rule down"
+                onClick={(e) => { e.stopPropagation(); onMoveDown(r.id); }}
+              >▼</button>
+            </div>
+          )}
           <span style={S.id}>{r.id || '(unnamed)'}</span>
           <span style={S.trigger}>{r.trigger}</span>
           {onCopy && (

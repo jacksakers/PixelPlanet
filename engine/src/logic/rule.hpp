@@ -64,9 +64,13 @@ struct Action {
 
     // ACTION_EAT / ACTION_EAT_FIRST — move into a cell of eatTarget type, consuming it.
     // dirs / randomizeDirs reused for EatFirst.
-    int         eatTarget = TARGET_ANY;   // TARGET_ANY | entity ID (TARGET_EMPTY not useful here)
-    std::string gainVar;                  // optional per-cell variable to increment when eating
-    float       gainVal = 0.0f;           // amount to add to gainVar
+    int         eatTarget      = TARGET_ANY;  // TARGET_ANY | entity ID (TARGET_EMPTY not useful here)
+    std::string gainVar;                      // optional per-cell variable to increment when eating
+    float       gainVal        = 0.0f;        // amount to add to gainVar
+    int         eatReplaceWith = TARGET_ANY;  // what to place at the source cell after eating:
+                                              //   TARGET_ANY (-2) = leave EMPTY (default)
+                                              //   TARGET_EMPTY (-1) = explicitly EMPTY
+                                              //   entity ID >= 0  = spawn that entity there
 
     // ACTION_SWAP / ACTION_SWAP_FIRST — swap positions with a neighbour of swapTarget type.
     // dir / dirs / randomizeDirs reused from above.

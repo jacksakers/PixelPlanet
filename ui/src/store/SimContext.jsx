@@ -158,6 +158,16 @@ function reducer(state, action) {
       };
     }
 
+    case 'ENTITY_RULES_REORDER': {
+      return {
+        ...state,
+        entityRules: {
+          ...state.entityRules,
+          [action.entityId]: action.rules,
+        },
+      };
+    }
+
     default:
       return state;
   }
@@ -186,6 +196,7 @@ export function SimProvider({ children }) {
     addEntityRule:      (entityId, rule)      => dispatch({ type: 'ENTITY_RULE_ADD',      entityId, rule }),
     updateEntityRule:   (entityId, rule)      => dispatch({ type: 'ENTITY_RULE_UPDATE',   entityId, rule }),
     deleteEntityRule:   (entityId, ruleId)    => dispatch({ type: 'ENTITY_RULE_DELETE',   entityId, ruleId }),
+    reorderEntityRules: (entityId, rules)     => dispatch({ type: 'ENTITY_RULES_REORDER', entityId, rules }),
     importConfig:       (cfg)                 => dispatch({ type: 'IMPORT_CONFIG',        ...cfg }),
     mergeImport:        (cfg)                 => dispatch({ type: 'MERGE_IMPORT',         ...cfg }),
     resetDefaults:      ()                    => dispatch({ type: 'RESET_DEFAULTS' }),

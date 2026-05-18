@@ -3,6 +3,7 @@
  *
  * Form for editing a single entity definition: name, colour, density,
  * isStatic, and named per-cell variables.
+ * Includes a JSON toggle for direct editing of the entity object.
  */
 
 import { useState, useEffect } from 'react';
@@ -36,8 +37,14 @@ export default function EntityEditor({ entityId }) {
   const entity = entities.find((e) => e.id === entityId);
 
   const [draft, setDraft] = useState(null);
+  const [jsonMode, setJsonMode]   = useState(false);
+  const [jsonText, setJsonText]   = useState('');
+  const [jsonError, setJsonError] = useState('');
+
   useEffect(() => {
-    setDraft(entity ? { ...entity, variables: entity.variables ?? [] } : null);
+    const next = entity ? { ...entity, variables: entity.variables ?? [] } : null;
+    setDraft(next);
+    if (jsonMode && next) setJsonText(JSON.stringify(next, null, 2));
   }, [entityId, entity?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!draft) return <p style={{ color: '#555', fontSize: '0.8rem' }}>Select an entity to edit.</p>;
@@ -46,6 +53,27 @@ export default function EntityEditor({ entityId }) {
     const next = { ...draft, ...partial };
     setDraft(next);
     updateEntity(next);
+  }
+
+  function handleToggleJson() {
+    if (!jsonMode) {
+      setJsonText(JSON.stringify(draft, null, 2));
+      setJsonError('');
+    }
+    setJsonMode((v) => !v);
+  }
+
+  function handleApplyJson() {
+    try {
+      const parsed = JSON.parse(jsonText);
+      const next = { ...parsed, variables: parsed.variables ?? [] };
+      setDraft(next);
+      updateEntity(next);
+      setJsonError('');
+      setJsonMode(false);
+    } catch (e) {
+      setJsonError(String(e));
+    }
   }
 
   function colorToHex([r, g, b]) {
@@ -73,154 +101,199 @@ export default function EntityEditor({ entityId }) {
     commit({ variables: vars });
   }
 
+  const jsonToggleStyle = (active) => ({
+    padding: '2px 8px',
+    background: active ? '#1e2e1e' : 'none',
+    border: `1px solid ${active ? '#446644' : '#3a3a55'}`,
+    borderRadius: 5,
+    color: active ? '#88cc88' : '#666',
+    cursor: 'pointer',
+    fontSize: '0.72rem',
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '0.75rem', color: '#556', fontWeight: 600, letterSpacing: '0.04em' }}>
           ID {draft.id}
         </span>
-        <button
-          title="Delete entity"
-          onClick={() => deleteEntity(draft.id)}
-          style={{
-            background: 'none', border: '1px solid #552222', borderRadius: 5,
-            color: '#aa4444', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 8px',
-          }}
-        >
-          Delete
-        </button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button style={jsonToggleStyle(jsonMode)} onClick={handleToggleJson} title="Toggle JSON editor">
+            {'{ }'} JSON
+          </button>
+          <button
+            title="Delete entity"
+            onClick={() => deleteEntity(draft.id)}
+            style={{
+              background: 'none', border: '1px solid #552222', borderRadius: 5,
+              color: '#aa4444', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 8px',
+            }}
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
-      <label style={field.label}>
-        Name
-        <input
-          style={field.input}
-          value={draft.name}
-          onChange={(e) => commit({ name: e.target.value })}
-        />
-      </label>
-
-      <label style={field.label}>
-        Colour
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input
-            type="color"
-            value={colorToHex(draft.color)}
-            onChange={(e) => commit({ color: hexToColor(e.target.value) })}
-            style={{ width: 36, height: 28, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
-          />
-          <input
-            style={{ ...field.input, flex: 1 }}
-            value={colorToHex(draft.color)}
-            maxLength={7}
-            onChange={(e) => {
-              if (/^#[0-9a-fA-F]{6}$/.test(e.target.value))
-                commit({ color: hexToColor(e.target.value) });
-              else setDraft((d) => ({ ...d, _hexRaw: e.target.value }));
+      {jsonMode ? (
+        /* ── JSON edit mode ───────────────────────────────────────────────── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <textarea
+            style={{
+              background: '#0d0d16', border: '1px solid #2a2a3a', borderRadius: 5,
+              color: '#ccc', padding: '6px 8px', fontSize: '0.72rem', fontFamily: 'monospace',
+              width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 220,
             }}
+            value={jsonText}
+            onChange={(e) => setJsonText(e.target.value)}
+            spellCheck={false}
           />
-        </div>
-      </label>
-
-      <label style={field.label}>
-        Opacity (0–255)
-        <input
-          type="range"
-          min={0} max={255}
-          value={draft.color[3]}
-          onChange={(e) =>
-            commit({ color: [draft.color[0], draft.color[1], draft.color[2], Number(e.target.value)] })
-          }
-          style={{ width: '100%' }}
-        />
-        <span style={{ color: '#666', fontSize: '0.72rem' }}>{draft.color[3]}</span>
-      </label>
-
-      <label style={field.label}>
-        Density
-        <input
-          type="number"
-          step="0.1"
-          value={draft.density}
-          onChange={(e) => commit({ density: parseFloat(e.target.value) || 0 })}
-          style={field.input}
-          disabled={draft.isStatic}
-          title={draft.isStatic ? 'Static entities ignore density' : ''}
-        />
-        <span style={{ fontSize: '0.7rem', color: '#555' }}>
-          {'> 0 = participates in gravity'}
-        </span>
-      </label>
-
-      <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '0.82rem', color: '#bbb' }}>
-        <input
-          type="checkbox"
-          checked={draft.isStatic}
-          onChange={(e) => commit({ isStatic: e.target.checked, density: e.target.checked ? 0 : draft.density })}
-        />
-        Static (immovable, no rule evaluation)
-      </label>
-
-      {/* ── Variables ───────────────────────────────────────────────────── */}
-      <div style={{ borderTop: '1px solid #2a2a3a', paddingTop: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ fontSize: '0.72rem', color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            Variables ({(draft.variables ?? []).length}/{MAX_VARS})
-          </span>
-          {(draft.variables ?? []).length < MAX_VARS && (
+          {jsonError && <span style={{ fontSize: '0.72rem', color: '#cc5555' }}>{jsonError}</span>}
+          <div style={{ display: 'flex', gap: 6 }}>
             <button
-              onClick={addVariable}
-              style={{
-                background: 'none', border: '1px solid #3a3a55', borderRadius: 5,
-                color: '#778', cursor: 'pointer', fontSize: '0.72rem', padding: '2px 8px',
-              }}
-            >
-              + Add
-            </button>
-          )}
+              onClick={handleApplyJson}
+              style={{ padding: '4px 12px', background: '#1e2e1e', border: '1px solid #446644', borderRadius: 5, color: '#88cc88', cursor: 'pointer', fontSize: '0.78rem' }}
+            >Apply JSON</button>
+            <button
+              onClick={() => { setJsonMode(false); setJsonError(''); }}
+              style={{ padding: '4px 10px', background: 'none', border: '1px solid #3a3a55', borderRadius: 5, color: '#888', cursor: 'pointer', fontSize: '0.78rem' }}
+            >Cancel</button>
+          </div>
         </div>
-
-        {(draft.variables ?? []).length === 0 && (
-          <p style={{ fontSize: '0.74rem', color: '#444', margin: 0 }}>
-            No variables. Add up to 4 named integers (0–65535) per cell.
-          </p>
-        )}
-
-        {(draft.variables ?? []).map((v, i) => (
-          <div key={i} style={{
-            display: 'flex', gap: 5, alignItems: 'center', marginBottom: 5,
-            padding: '4px 6px', background: '#1a1a2e', borderRadius: 5, border: '1px solid #2a2a3a',
-          }}>
+      ) : (
+        /* ── Form edit mode ───────────────────────────────────────────────── */
+        <>
+          <label style={field.label}>
+            Name
             <input
-              style={{ ...field.input, flex: 2, padding: '3px 5px', fontSize: '0.76rem' }}
-              value={v.name}
-              placeholder="name"
-              onChange={(e) => updateVariable(i, { name: e.target.value })}
+              style={field.input}
+              value={draft.name}
+              onChange={(e) => commit({ name: e.target.value })}
             />
+          </label>
+
+          <label style={field.label}>
+            Colour
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="color"
+                value={colorToHex(draft.color)}
+                onChange={(e) => commit({ color: hexToColor(e.target.value) })}
+                style={{ width: 36, height: 28, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+              />
+              <input
+                style={{ ...field.input, flex: 1 }}
+                value={colorToHex(draft.color)}
+                maxLength={7}
+                onChange={(e) => {
+                  if (/^#[0-9a-fA-F]{6}$/.test(e.target.value))
+                    commit({ color: hexToColor(e.target.value) });
+                  else setDraft((d) => ({ ...d, _hexRaw: e.target.value }));
+                }}
+              />
+            </div>
+          </label>
+
+          <label style={field.label}>
+            Opacity (0–255)
+            <input
+              type="range"
+              min={0} max={255}
+              value={draft.color[3]}
+              onChange={(e) =>
+                commit({ color: [draft.color[0], draft.color[1], draft.color[2], Number(e.target.value)] })
+              }
+              style={{ width: '100%' }}
+            />
+            <span style={{ color: '#666', fontSize: '0.72rem' }}>{draft.color[3]}</span>
+          </label>
+
+          <label style={field.label}>
+            Density
             <input
               type="number"
-              min={0} max={65535}
-              style={{ ...field.input, flex: 1, padding: '3px 5px', fontSize: '0.76rem' }}
-              value={v.defaultVal}
-              title="Default value (0–65535)"
-              onChange={(e) => updateVariable(i, { defaultVal: Math.max(0, Math.min(65535, parseInt(e.target.value) || 0)) })}
+              step="0.1"
+              value={draft.density}
+              onChange={(e) => commit({ density: parseFloat(e.target.value) || 0 })}
+              style={field.input}
+              disabled={draft.isStatic}
+              title={draft.isStatic ? 'Static entities ignore density' : ''}
             />
-            <button
-              onClick={() => removeVariable(i)}
-              style={{
-                background: 'none', border: '1px solid #552222', borderRadius: 4,
-                color: '#aa4444', cursor: 'pointer', fontSize: '0.7rem', padding: '1px 5px',
-              }}
-            >✕</button>
-          </div>
-        ))}
+            <span style={{ fontSize: '0.7rem', color: '#555' }}>
+              {'> 0 = participates in gravity'}
+            </span>
+          </label>
 
-        {(draft.variables ?? []).length > 0 && (
-          <p style={{ fontSize: '0.7rem', color: '#444', margin: '2px 0 0' }}>
-            name · default — use in VariableCheck conditions &amp; ModifyVariable actions
-          </p>
-        )}
-      </div>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '0.82rem', color: '#bbb' }}>
+            <input
+              type="checkbox"
+              checked={draft.isStatic}
+              onChange={(e) => commit({ isStatic: e.target.checked, density: e.target.checked ? 0 : draft.density })}
+            />
+            Static (immovable, no rule evaluation)
+          </label>
+
+          {/* ── Variables ─────────────────────────────────────────────────── */}
+          <div style={{ borderTop: '1px solid #2a2a3a', paddingTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: '0.72rem', color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Variables ({(draft.variables ?? []).length}/{MAX_VARS})
+              </span>
+              {(draft.variables ?? []).length < MAX_VARS && (
+                <button
+                  onClick={addVariable}
+                  style={{
+                    background: 'none', border: '1px solid #3a3a55', borderRadius: 5,
+                    color: '#778', cursor: 'pointer', fontSize: '0.72rem', padding: '2px 8px',
+                  }}
+                >
+                  + Add
+                </button>
+              )}
+            </div>
+
+            {(draft.variables ?? []).length === 0 && (
+              <p style={{ fontSize: '0.74rem', color: '#444', margin: 0 }}>
+                No variables. Add up to 4 named integers (0–65535) per cell.
+              </p>
+            )}
+
+            {(draft.variables ?? []).map((v, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 5, alignItems: 'center', marginBottom: 5,
+                padding: '4px 6px', background: '#1a1a2e', borderRadius: 5, border: '1px solid #2a2a3a',
+              }}>
+                <input
+                  style={{ ...field.input, flex: 2, padding: '3px 5px', fontSize: '0.76rem' }}
+                  value={v.name}
+                  placeholder="name"
+                  onChange={(e) => updateVariable(i, { name: e.target.value })}
+                />
+                <input
+                  type="number"
+                  min={0} max={65535}
+                  style={{ ...field.input, flex: 1, padding: '3px 5px', fontSize: '0.76rem' }}
+                  value={v.defaultVal}
+                  title="Default value (0–65535)"
+                  onChange={(e) => updateVariable(i, { defaultVal: Math.max(0, Math.min(65535, parseInt(e.target.value) || 0)) })}
+                />
+                <button
+                  onClick={() => removeVariable(i)}
+                  style={{
+                    background: 'none', border: '1px solid #552222', borderRadius: 4,
+                    color: '#aa4444', cursor: 'pointer', fontSize: '0.7rem', padding: '1px 5px',
+                  }}
+                >✕</button>
+              </div>
+            ))}
+
+            {(draft.variables ?? []).length > 0 && (
+              <p style={{ fontSize: '0.7rem', color: '#444', margin: '2px 0 0' }}>
+                name · default — use in VariableCheck conditions &amp; ModifyVariable actions
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

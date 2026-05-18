@@ -1,6 +1,6 @@
 # PixelPlanet — Entity & Rule Schema Reference
 
-> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-18 03:56 UTC.
+> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-18 14:18 UTC.
 > Re-run to pick up new condition types, actions, or triggers added to the codebase.
 
 ## Source file status
@@ -351,37 +351,39 @@ Mutates a named per-cell variable by the given amount. Clamped to 0–65535.
 
 ### `Eat` *(C++ enum: `ACTION_EAT`)*
 
-Moves this cell one step in a given direction **into** a cell occupied by the target entity type, consuming it. Optionally grants the eater a variable bonus.
+Moves this cell one step in a given direction **into** a cell occupied by the target entity type, consuming it. Optionally grants the eater a variable bonus and/or spawns a replacement entity at the vacated source cell.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `dir` | `Direction` | Direction of the prey. |
 | `target` | `"ANY"|name|id` | **Prefer entity name string** (e.g. `"Algae"`). Also accepts `"ANY"` or numeric ID. |
+| `replaceWith` | `"EMPTY"|name|id` | (optional) Entity to spawn at the source cell after eating. Omit or `"EMPTY"` to leave it empty (default). Use an entity name (e.g. `"Water"`) to fill the trail. |
 | `gainVar` | `string` | (optional) Variable name on the eater to increase when eating succeeds. |
 | `gainVal` | `number` | (optional) Amount to add to gainVar (default 0). |
 
 **Example:**
 ```json
-{ "type": "Eat", "dir": "up", "target": "Algae", "gainVar": "energy", "gainVal": 20 }
+{ "type": "Eat", "dir": "up", "target": "Algae", "replaceWith": "Water", "gainVar": "energy", "gainVal": 20 }
 ```
 
 ---
 
 ### `EatFirst` *(C++ enum: `ACTION_EAT`)*
 
-Tries each direction in order and eats the first cell that matches the target type. Same as MoveFirst but for occupied cells.
+Tries each direction in order and eats the first cell that matches the target type. Same as MoveFirst but for occupied cells. Supports the same replaceWith trail-fill option as Eat.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `dirs` | `Direction[]` | Ordered list of directions to try. |
 | `randomize` | `boolean` | If true (default), shuffle the direction list each tick. |
 | `target` | `"ANY"|name|id` | **Prefer entity name string** (e.g. `"Grass"`). Also accepts `"ANY"` or numeric ID. |
+| `replaceWith` | `"EMPTY"|name|id` | (optional) Entity to place at the source cell after eating (e.g. `"Water"` to fill gaps). |
 | `gainVar` | `string` | (optional) Variable to increase on successful eat. |
 | `gainVal` | `number` | (optional) Amount to gain. |
 
 **Example:**
 ```json
-{ "type": "EatFirst", "dirs": ["up", "left", "right", "down"], "target": "Grass", "randomize": true, "gainVar": "energy", "gainVal": 10 }
+{ "type": "EatFirst", "dirs": ["up", "left", "right", "down"], "target": "Grass", "replaceWith": "Water", "randomize": true, "gainVar": "energy", "gainVal": 10 }
 ```
 
 ---
