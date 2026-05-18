@@ -33,12 +33,16 @@ const BRUSH_RADIUS = 3;
  * Props:
  *   selectedTypeRef  - React.MutableRefObject<number>
  *   brushSizeRef     - React.MutableRefObject<number>  (radius in cells)
+ *   isPausedRef      - React.MutableRefObject<boolean> (pause simulation)
+ *   tickRateRef      - React.MutableRefObject<number>  (ticks per frame, e.g. 0.5, 1, 2, 4)
+ *   clearCanvasRef   - React.MutableRefObject<function|null> (set to clear fn by this component)
  */
-export default function SimCanvas({ selectedTypeRef, brushSizeRef }) {
-  const canvasRef    = useRef(null);
-  const modRef       = useRef(null);
-  const rafRef       = useRef(null);
-  const mouseRef     = useRef({ down: false, x: 0, y: 0 });
+export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, tickRateRef, clearCanvasRef }) {
+  const canvasRef       = useRef(null);
+  const modRef          = useRef(null);
+  const rafRef          = useRef(null);
+  const mouseRef        = useRef({ down: false, x: 0, y: 0 });
+  const tickAccRef      = useRef(0); // fractional tick accumulator for sub-1× speeds
   const [status, setStatus] = useState('Loading WASM engine…');
 
   const { entities, globalRules, entityRules, colorTable } = useSimContext();
@@ -106,6 +110,11 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef }) {
 
         setStatus('');
 
+        // Expose a clear-canvas function to App via ref
+        if (clearCanvasRef) {
+          clearCanvasRef.current = () => engineInit(mod, GRID_W, GRID_H);
+        }
+
         const loop = () => {
           if (!running) return;
 
@@ -122,7 +131,15 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef }) {
             }
           }
 
-          engineUpdate(mod);
+          if (!isPausedRef?.current) {
+            // Accumulate fractional ticks and fire whole ticks each frame
+            const rate = tickRateRef?.current ?? 1;
+            tickAccRef.current += rate;
+            const ticks = Math.floor(tickAccRef.current);
+            tickAccRef.current -= ticks;
+            for (let t = 0; t < ticks; t++) engineUpdate(mod);
+          }
+
           renderFrame(ctx, mod);
           rafRef.current = requestAnimationFrame(loop);
         };

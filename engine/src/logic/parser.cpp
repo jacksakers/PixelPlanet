@@ -274,7 +274,11 @@ static Rule parseRule(const nlohmann::json& j) {
 // ---------------------------------------------------------------------------
 bool parseConfig(const char* jsonStr) {
     try {
-        auto doc = nlohmann::json::parse(jsonStr);
+        // allow_exceptions=false: returns discarded value instead of throwing
+        // on malformed JSON, preventing an uncaught C++ exception that would
+        // abort() in Emscripten builds compiled without -fexceptions.
+        auto doc = nlohmann::json::parse(jsonStr, nullptr, false);
+        if (doc.is_discarded()) return false;
 
         // ---- Entities ----
         g_entityRegistry.clear();

@@ -129,10 +129,10 @@ const CONDITION_DETAIL = {
   NeighborCheck: {
     desc: 'Checks whether the cell in the given direction is a specific entity type.',
     fields: [
-      { name: 'dir',    type: 'Direction',       desc: 'Which neighbour to inspect.' },
-      { name: 'target', type: '"EMPTY"|"ANY"|id', desc: '"EMPTY" = empty cell, "ANY" = any non-empty cell, or an entity ID number.' },
+      { name: 'dir',    type: 'Direction',              desc: 'Which neighbour to inspect.' },
+      { name: 'target', type: '"EMPTY"|"ANY"|name|id', desc: '**Prefer entity name strings** (e.g. `"Water"`). Also accepts `"EMPTY"`, `"ANY"`, or a numeric ID (legacy). Name lookup is case-insensitive.' },
     ],
-    example: `{ "type": "NeighborCheck", "dir": "down", "target": "EMPTY" }`,
+    example: `{ "type": "NeighborCheck", "dir": "down", "target": "Water" }`,
   },
   PropertyCheck: {
     desc: 'Checks a built-in numeric property of the entity that owns this cell.',
@@ -155,11 +155,11 @@ const CONDITION_DETAIL = {
   NeighborCount: {
     desc: 'Counts how many of the 8 surrounding cells match a target type and compares that count to a threshold.',
     fields: [
-      { name: 'target', type: '"EMPTY"|"ANY"|id', desc: 'Cell type to count.' },
+      { name: 'target', type: '"EMPTY"|"ANY"|name|id', desc: '**Prefer entity name strings** (e.g. `"Algae"`). Also accepts `"EMPTY"`, `"ANY"`, or a numeric ID (legacy).' },
       { name: 'op',     type: 'Op',    desc: `Comparison operator: ${PROPERTY_OPS.join(' ')}.` },
       { name: 'val',    type: 'number',desc: 'Number to compare the count against (0–8).' },
     ],
-    example: `{ "type": "NeighborCount", "target": "ANY", "op": ">=", "val": 3 }`,
+    example: `{ "type": "NeighborCount", "target": "Algae", "op": ">=", "val": 3 }`,
   },
   Chance: {
     desc: 'Passes randomly with the given probability. Use to make behaviour non-deterministic.',
@@ -210,17 +210,17 @@ const ACTION_DETAIL = {
   Transform: {
     desc: 'Replaces this cell with a different entity type in-place. Variables are reset to the new entity\'s defaults.',
     fields: [
-      { name: 'targetId', type: 'number (entity ID)', desc: 'The ID of the entity to become.' },
+      { name: 'targetId', type: 'name|id', desc: '**Prefer the entity name string** (e.g. `"Steam"`). Numeric ID also accepted for legacy rules.' },
     ],
-    example: `{ "type": "Transform", "targetId": 4 }`,
+    example: `{ "type": "Transform", "targetId": "Steam" }`,
   },
   Spawn: {
     desc: 'Creates a new cell of the given entity type in a neighbouring slot. Does nothing if that slot is occupied.',
     fields: [
-      { name: 'targetId', type: 'number (entity ID)', desc: 'Entity type to spawn.' },
-      { name: 'dir',      type: 'Direction',          desc: 'Which neighbouring slot to spawn into.' },
+      { name: 'targetId', type: 'name|id', desc: '**Prefer the entity name string** (e.g. `"Plankton"`). Numeric ID also accepted for legacy rules.' },
+      { name: 'dir',      type: 'Direction', desc: 'Which neighbouring slot to spawn into.' },
     ],
-    example: `{ "type": "Spawn", "targetId": 5, "dir": "up" }`,
+    example: `{ "type": "Spawn", "targetId": "Plankton", "dir": "up" }`,
   },
   Destroy: {
     desc: 'Removes this cell from the grid (sets it to EMPTY).',
@@ -239,40 +239,40 @@ const ACTION_DETAIL = {
   Eat: {
     desc: 'Moves this cell one step in a given direction **into** a cell occupied by the target entity type, consuming it. Optionally grants the eater a variable bonus.',
     fields: [
-      { name: 'dir',     type: 'Direction',       desc: 'Direction of the prey.' },
-      { name: 'target',  type: '"ANY"|id',        desc: 'Entity ID to eat, or "ANY" for any non-empty cell.' },
-      { name: 'gainVar', type: 'string',           desc: '(optional) Variable name on the eater to increase when eating succeeds.' },
-      { name: 'gainVal', type: 'number',           desc: '(optional) Amount to add to gainVar (default 0).' },
+      { name: 'dir',     type: 'Direction',        desc: 'Direction of the prey.' },
+      { name: 'target',  type: '"ANY"|name|id',   desc: '**Prefer entity name string** (e.g. `"Algae"`). Also accepts `"ANY"` or numeric ID.' },
+      { name: 'gainVar', type: 'string',            desc: '(optional) Variable name on the eater to increase when eating succeeds.' },
+      { name: 'gainVal', type: 'number',            desc: '(optional) Amount to add to gainVar (default 0).' },
     ],
-    example: `{ "type": "Eat", "dir": "up", "target": 5, "gainVar": "energy", "gainVal": 20 }`,
+    example: `{ "type": "Eat", "dir": "up", "target": "Algae", "gainVar": "energy", "gainVal": 20 }`,
   },
   EatFirst: {
     desc: 'Tries each direction in order and eats the first cell that matches the target type. Same as MoveFirst but for occupied cells.',
     fields: [
-      { name: 'dirs',      type: 'Direction[]', desc: 'Ordered list of directions to try.' },
-      { name: 'randomize', type: 'boolean',     desc: 'If true (default), shuffle the direction list each tick.' },
-      { name: 'target',    type: '"ANY"|id',   desc: 'Entity ID to eat, or "ANY".' },
-      { name: 'gainVar',   type: 'string',      desc: '(optional) Variable to increase on successful eat.' },
-      { name: 'gainVal',   type: 'number',      desc: '(optional) Amount to gain.' },
+      { name: 'dirs',      type: 'Direction[]',    desc: 'Ordered list of directions to try.' },
+      { name: 'randomize', type: 'boolean',        desc: 'If true (default), shuffle the direction list each tick.' },
+      { name: 'target',    type: '"ANY"|name|id', desc: '**Prefer entity name string** (e.g. `"Grass"`). Also accepts `"ANY"` or numeric ID.' },
+      { name: 'gainVar',   type: 'string',         desc: '(optional) Variable to increase on successful eat.' },
+      { name: 'gainVal',   type: 'number',         desc: '(optional) Amount to gain.' },
     ],
-    example: `{ "type": "EatFirst", "dirs": ["up", "left", "right", "down"], "target": 3, "randomize": true, "gainVar": "energy", "gainVal": 10 }`,
+    example: `{ "type": "EatFirst", "dirs": ["up", "left", "right", "down"], "target": "Grass", "randomize": true, "gainVar": "energy", "gainVal": 10 }`,
   },
   Swap: {
     desc: 'Swaps this cell\'s position with a neighbour of the given target type. Both cells and all their variables are exchanged. Used for buoyancy and swimming.',
     fields: [
-      { name: 'dir',    type: 'Direction',  desc: 'Direction of the cell to swap with.' },
-      { name: 'target', type: '"ANY"|id',  desc: 'Entity ID to swap with, or "ANY" for any non-empty cell.' },
+      { name: 'dir',    type: 'Direction',        desc: 'Direction of the cell to swap with.' },
+      { name: 'target', type: '"ANY"|name|id',   desc: '**Prefer entity name string** (e.g. `"Water"`). Also accepts `"ANY"` or numeric ID.' },
     ],
-    example: `{ "type": "Swap", "dir": "up", "target": 2 }`,
+    example: `{ "type": "Swap", "dir": "up", "target": "Water" }`,
   },
   SwapFirst: {
     desc: 'Tries each direction in order and swaps with the first cell that matches the target type.',
     fields: [
-      { name: 'dirs',      type: 'Direction[]', desc: 'Ordered list of directions to try.' },
-      { name: 'randomize', type: 'boolean',     desc: 'If true (default), shuffle the direction list each tick.' },
-      { name: 'target',    type: '"ANY"|id',   desc: 'Entity ID to swap with, or "ANY".' },
+      { name: 'dirs',      type: 'Direction[]',    desc: 'Ordered list of directions to try.' },
+      { name: 'randomize', type: 'boolean',        desc: 'If true (default), shuffle the direction list each tick.' },
+      { name: 'target',    type: '"ANY"|name|id', desc: '**Prefer entity name string** (e.g. `"Water"`). Also accepts `"ANY"` or numeric ID.' },
     ],
-    example: `{ "type": "SwapFirst", "dirs": ["left", "right"], "target": 2, "randomize": true }`,
+    example: `{ "type": "SwapFirst", "dirs": ["left", "right"], "target": "Water", "randomize": true }`,
   },
 };
 
@@ -391,7 +391,7 @@ const ORGANISM_EXAMPLE = {
           ],
         },
         actions: [
-          { type: 'Spawn', targetId: 11, dir: 'up' },
+          { type: 'Spawn', targetId: 'Spark', dir: 'up' },
         ],
       },
     ],
@@ -590,6 +590,12 @@ click **Merge (add)** to add Lava and Spark to your sandbox.
 ---
 
 ## Tips for AI-generated entity packs
+
+> ⚠️ **Always use entity name strings for \`target\` and \`targetId\` fields.**
+> Write \`"target": "Water"\` not \`"target": 2\`. The engine resolves names to IDs at
+> runtime, so name-based rules stay correct even if IDs change or entities are
+> reordered. Numeric IDs are still accepted for backward compatibility but are
+> **error-prone** and strongly discouraged in new bundles.
 
 1. **Give each entity a unique ID** that doesn't conflict with existing ones (IDs 1–3
    are Sand/Water/Stone by default). Start at ID 10+ for custom entities.

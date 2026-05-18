@@ -59,7 +59,7 @@ export default function RuleManager({ selectedType }) {
   const [copyingRuleId, setCopyingRuleId] = useState(null);
   const [copyTargetId, setCopyTargetId]   = useState(null);
 
-  // Sync entity selection when toolbar changes
+  // Sync entity selection when right panel changes
   useEffect(() => {
     if (selectedType && selectedType > 0) {
       setTab(TAB_ENTITY);
@@ -142,15 +142,19 @@ export default function RuleManager({ selectedType }) {
       </div>
 
       {/* Entity selector (only for entity tab) */}
-      {tab === TAB_ENTITY && (
-        <select
-          style={S.sel}
-          value={entityId ?? ''}
-          onChange={(e) => { setEntityId(Number(e.target.value)); setEditing(false); setSelectedRuleId(null); }}
-        >
-          {entities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </select>
+      {tab === TAB_ENTITY && !entityId && (
+        <p style={{ fontSize: '0.8rem', color: '#445', textAlign: 'center', marginBottom: 8 }}>
+          Select a pixel from the right panel.
+        </p>
       )}
+      {tab === TAB_ENTITY && entityId && (() => {
+        const ent = entities.find((e) => e.id === entityId);
+        return ent ? (
+          <div style={{ fontSize: '0.74rem', color: '#667', marginBottom: 6, padding: '3px 6px', background: '#1a1a2e', borderRadius: 5, border: '1px solid #2a2a3a' }}>
+            {ent.name}
+          </div>
+        ) : null;
+      })()}
 
       {/* Rule list */}
       <RuleList

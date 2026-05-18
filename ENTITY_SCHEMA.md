@@ -1,6 +1,6 @@
 # PixelPlanet — Entity & Rule Schema Reference
 
-> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-18 03:40 UTC.
+> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-18 03:56 UTC.
 > Re-run to pick up new condition types, actions, or triggers added to the codebase.
 
 ## Source file status
@@ -127,11 +127,11 @@ Checks whether the cell in the given direction is a specific entity type.
 | Field | Type | Description |
 |-------|------|-------------|
 | `dir` | `Direction` | Which neighbour to inspect. |
-| `target` | `"EMPTY"|"ANY"|id` | "EMPTY" = empty cell, "ANY" = any non-empty cell, or an entity ID number. |
+| `target` | `"EMPTY"|"ANY"|name|id` | **Prefer entity name strings** (e.g. `"Water"`). Also accepts `"EMPTY"`, `"ANY"`, or a numeric ID (legacy). Name lookup is case-insensitive. |
 
 **Example:**
 ```json
-{ "type": "NeighborCheck", "dir": "down", "target": "EMPTY" }
+{ "type": "NeighborCheck", "dir": "down", "target": "Water" }
 ```
 
 ---
@@ -176,13 +176,13 @@ Counts how many of the 8 surrounding cells match a target type and compares that
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `target` | `"EMPTY"|"ANY"|id` | Cell type to count. |
+| `target` | `"EMPTY"|"ANY"|name|id` | **Prefer entity name strings** (e.g. `"Algae"`). Also accepts `"EMPTY"`, `"ANY"`, or a numeric ID (legacy). |
 | `op` | `Op` | Comparison operator: < <= == != > >=. |
 | `val` | `number` | Number to compare the count against (0–8). |
 
 **Example:**
 ```json
-{ "type": "NeighborCount", "target": "ANY", "op": ">=", "val": 3 }
+{ "type": "NeighborCount", "target": "Algae", "op": ">=", "val": 3 }
 ```
 
 ---
@@ -294,11 +294,11 @@ Replaces this cell with a different entity type in-place. Variables are reset to
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `targetId` | `number (entity ID)` | The ID of the entity to become. |
+| `targetId` | `name|id` | **Prefer the entity name string** (e.g. `"Steam"`). Numeric ID also accepted for legacy rules. |
 
 **Example:**
 ```json
-{ "type": "Transform", "targetId": 4 }
+{ "type": "Transform", "targetId": "Steam" }
 ```
 
 ---
@@ -309,12 +309,12 @@ Creates a new cell of the given entity type in a neighbouring slot. Does nothing
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `targetId` | `number (entity ID)` | Entity type to spawn. |
+| `targetId` | `name|id` | **Prefer the entity name string** (e.g. `"Plankton"`). Numeric ID also accepted for legacy rules. |
 | `dir` | `Direction` | Which neighbouring slot to spawn into. |
 
 **Example:**
 ```json
-{ "type": "Spawn", "targetId": 5, "dir": "up" }
+{ "type": "Spawn", "targetId": "Plankton", "dir": "up" }
 ```
 
 ---
@@ -356,13 +356,13 @@ Moves this cell one step in a given direction **into** a cell occupied by the ta
 | Field | Type | Description |
 |-------|------|-------------|
 | `dir` | `Direction` | Direction of the prey. |
-| `target` | `"ANY"|id` | Entity ID to eat, or "ANY" for any non-empty cell. |
+| `target` | `"ANY"|name|id` | **Prefer entity name string** (e.g. `"Algae"`). Also accepts `"ANY"` or numeric ID. |
 | `gainVar` | `string` | (optional) Variable name on the eater to increase when eating succeeds. |
 | `gainVal` | `number` | (optional) Amount to add to gainVar (default 0). |
 
 **Example:**
 ```json
-{ "type": "Eat", "dir": "up", "target": 5, "gainVar": "energy", "gainVal": 20 }
+{ "type": "Eat", "dir": "up", "target": "Algae", "gainVar": "energy", "gainVal": 20 }
 ```
 
 ---
@@ -375,13 +375,13 @@ Tries each direction in order and eats the first cell that matches the target ty
 |-------|------|-------------|
 | `dirs` | `Direction[]` | Ordered list of directions to try. |
 | `randomize` | `boolean` | If true (default), shuffle the direction list each tick. |
-| `target` | `"ANY"|id` | Entity ID to eat, or "ANY". |
+| `target` | `"ANY"|name|id` | **Prefer entity name string** (e.g. `"Grass"`). Also accepts `"ANY"` or numeric ID. |
 | `gainVar` | `string` | (optional) Variable to increase on successful eat. |
 | `gainVal` | `number` | (optional) Amount to gain. |
 
 **Example:**
 ```json
-{ "type": "EatFirst", "dirs": ["up", "left", "right", "down"], "target": 3, "randomize": true, "gainVar": "energy", "gainVal": 10 }
+{ "type": "EatFirst", "dirs": ["up", "left", "right", "down"], "target": "Grass", "randomize": true, "gainVar": "energy", "gainVal": 10 }
 ```
 
 ---
@@ -393,11 +393,11 @@ Swaps this cell's position with a neighbour of the given target type. Both cells
 | Field | Type | Description |
 |-------|------|-------------|
 | `dir` | `Direction` | Direction of the cell to swap with. |
-| `target` | `"ANY"|id` | Entity ID to swap with, or "ANY" for any non-empty cell. |
+| `target` | `"ANY"|name|id` | **Prefer entity name string** (e.g. `"Water"`). Also accepts `"ANY"` or numeric ID. |
 
 **Example:**
 ```json
-{ "type": "Swap", "dir": "up", "target": 2 }
+{ "type": "Swap", "dir": "up", "target": "Water" }
 ```
 
 ---
@@ -410,11 +410,11 @@ Tries each direction in order and swaps with the first cell that matches the tar
 |-------|------|-------------|
 | `dirs` | `Direction[]` | Ordered list of directions to try. |
 | `randomize` | `boolean` | If true (default), shuffle the direction list each tick. |
-| `target` | `"ANY"|id` | Entity ID to swap with, or "ANY". |
+| `target` | `"ANY"|name|id` | **Prefer entity name string** (e.g. `"Water"`). Also accepts `"ANY"` or numeric ID. |
 
 **Example:**
 ```json
-{ "type": "SwapFirst", "dirs": ["left", "right"], "target": 2, "randomize": true }
+{ "type": "SwapFirst", "dirs": ["left", "right"], "target": "Water", "randomize": true }
 ```
 
 ---
@@ -582,7 +582,7 @@ This is a ready-to-import bundle. It defines:
         "actions": [
           {
             "type": "Spawn",
-            "targetId": 11,
+            "targetId": "Spark",
             "dir": "up"
           }
         ]
@@ -634,6 +634,12 @@ click **Merge (add)** to add Lava and Spark to your sandbox.
 ---
 
 ## Tips for AI-generated entity packs
+
+> ⚠️ **Always use entity name strings for `target` and `targetId` fields.**
+> Write `"target": "Water"` not `"target": 2`. The engine resolves names to IDs at
+> runtime, so name-based rules stay correct even if IDs change or entities are
+> reordered. Numeric IDs are still accepted for backward compatibility but are
+> **error-prone** and strongly discouraged in new bundles.
 
 1. **Give each entity a unique ID** that doesn't conflict with existing ones (IDs 1–3
    are Sand/Water/Stone by default). Start at ID 10+ for custom entities.

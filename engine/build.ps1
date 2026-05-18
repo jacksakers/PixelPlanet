@@ -36,6 +36,7 @@ $emccArgs = @(
     "-I", "src",
     "-std=c++17",
     "-O2",
+    "-fexceptions",
     "-sWASM=1",
     "-sMODULARIZE=1",
     "-sEXPORT_NAME=PixelPlanetEngine",
