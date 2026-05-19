@@ -46,7 +46,7 @@ function AppInner() {
   useEffect(() => {
     const handler = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-      if (e.code === 'Space') { e.preventDefault(); handleTogglePause(); return; }
+      // if (e.code === 'Space') { e.preventDefault(); handleTogglePause(); return; }
       const idx = parseInt(e.key) - 1;
       if (isNaN(idx) || idx < 0) return;
       if (idx < entities.length) handleSelectType(entities[idx].id);
