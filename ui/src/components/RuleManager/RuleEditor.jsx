@@ -104,6 +104,13 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
   const [jsonMode, setJsonMode]   = useState(false);
   const [jsonText, setJsonText]   = useState('');
   const [jsonError, setJsonError] = useState('');
+  const [saved, setSaved]         = useState(false);
+
+  function handleSave() {
+    onSave(draft);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  }
 
   // If the caller swaps the rule prop (e.g., switching selected rule) reset draft.
   useEffect(() => {
@@ -247,8 +254,12 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
                 Cancel
               </button>
             )}
-            <button style={S.saveBtn} onClick={() => onSave(draft)}>
-              {rule ? 'Save Rule' : 'Add Rule'}
+            <button style={{
+              ...S.saveBtn,
+              ...(saved ? { background: '#1e3a1e', border: '1px solid #44aa44', color: '#88ee88' } : {}),
+              transition: 'background 0.2s, color 0.2s, border-color 0.2s',
+            }} onClick={handleSave}>
+              {saved ? 'Saved ✓' : (rule ? 'Save Rule' : 'Add Rule')}
             </button>
           </div>
         </>

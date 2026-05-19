@@ -114,6 +114,18 @@ function VarNameSelect({ entityId, value, onChange }) {
   );
 }
 
+const CONDITION_DEFAULTS = {
+  Always:        { type: 'Always' },
+  NeighborCheck: { type: 'NeighborCheck', dir: 'down', target: 'EMPTY' },
+  PropertyCheck: { type: 'PropertyCheck', prop: 'density', op: '>', val: 0 },
+  VariableCheck: { type: 'VariableCheck', varName: '', op: '>=', val: 0 },
+  NeighborCount: { type: 'NeighborCount', target: 'ANY', op: '>=', val: 1 },
+  Chance:        { type: 'Chance', val: 50 },
+  AND:           { type: 'AND', children: [] },
+  OR:            { type: 'OR', children: [] },
+  NOT:           { type: 'NOT', children: [] },
+};
+
 export default function ConditionEditor({ condition, onChange, onDelete, depth = 0, entityId }) {
   function set(partial) { onChange({ ...condition, ...partial }); }
 
@@ -138,7 +150,7 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
         <select
           style={S.sel}
           value={condition.type}
-          onChange={(e) => set({ type: e.target.value, children: [] })}
+          onChange={(e) => onChange(CONDITION_DEFAULTS[e.target.value] ?? { type: e.target.value })}
         >
           {CONDITION_TYPES.map((t) => <option key={t}>{t}</option>)}
         </select>

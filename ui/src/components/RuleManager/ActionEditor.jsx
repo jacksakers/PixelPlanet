@@ -76,6 +76,21 @@ function VarSelect({ entityId, value, onChange, entities }) {
   );
 }
 
+const ACTION_DEFAULTS = {
+  Move:           { type: 'Move', dir: 'down' },
+  MoveFirst:      { type: 'MoveFirst', dirs: ['down'], randomize: true },
+  Transform:      { type: 'Transform', targetId: '' },
+  Spawn:          { type: 'Spawn', targetId: '', dir: 'up' },
+  Destroy:        { type: 'Destroy' },
+  ModifyVariable: { type: 'ModifyVariable', varName: '', op: '+=', val: 1 },
+  Eat:            { type: 'Eat', dir: 'up', target: 'ANY', replaceWith: 'EMPTY', gainVar: '', gainVal: 0 },
+  EatFirst:       { type: 'EatFirst', dirs: ['down'], target: 'ANY', replaceWith: 'EMPTY', gainVar: '', gainVal: 0, randomize: true },
+  Swap:           { type: 'Swap', dir: 'up', target: 'ANY' },
+  SwapFirst:      { type: 'SwapFirst', dirs: ['down'], target: 'ANY', randomize: true },
+  MoveToward:     { type: 'MoveToward', target: 'ANY', range: 5 },
+  MoveAway:       { type: 'MoveAway', target: 'ANY', range: 5 },
+};
+
 export default function ActionEditor({ action, onChange, onDelete, entityId }) {
   const { entities } = useSimContext();
   function set(partial) { onChange({ ...action, ...partial }); }
@@ -92,7 +107,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
 
   return (
     <div style={S.wrap}>
-      <select style={S.sel} value={action.type} onChange={(e) => set({ type: e.target.value })}>
+      <select style={S.sel} value={action.type} onChange={(e) => onChange(ACTION_DEFAULTS[e.target.value] ?? { type: e.target.value })}>
         {ACTION_TYPES.map((t) => <option key={t}>{t}</option>)}
       </select>
 
