@@ -154,7 +154,15 @@ static bool execMoveFirst(int x, int y, const std::vector<Dir>& dirs, bool rando
     size_t n     = dirs.size();
     size_t start = randomize ? (rand32() % n) : 0;
     for (size_t i = 0; i < n; ++i) {
-        if (tryMove(x, y, dirs[(start + i) % n])) return true;
+        Dir d = dirs[(start + i) % n];
+        if (d == DIR_ANY) {
+            // Expand 'any': try all 8 directions in a random order.
+            size_t s8 = rand32() % 8;
+            for (int k = 0; k < 8; ++k)
+                if (tryMove(x, y, static_cast<Dir>((s8 + k) % 8))) return true;
+        } else {
+            if (tryMove(x, y, d)) return true;
+        }
     }
     return false;
 }
@@ -189,6 +197,7 @@ static bool execAction(int x, int y, const Action& a) {
 
         case ACTION_SPAWN: {
             auto trySpawnDir = [&](Dir sd) -> bool {
+                if (sd == DIR_ANY || sd == DIR_NONE) return false;  // guard sentinel values
                 int nx = x + DIR_DX[sd];
                 int ny = y + DIR_DY[sd];
                 if (!g_grid.valid(nx, ny)) return false;
@@ -246,6 +255,7 @@ static bool execAction(int x, int y, const Action& a) {
         case ACTION_EAT_FIRST: {
             // Helpers reused for both single-dir and multi-dir variants.
             auto tryEat = [&](Dir edir) -> bool {
+                if (edir == DIR_ANY || edir == DIR_NONE) return false;  // guard sentinel values
                 int nx = x + DIR_DX[edir];
                 int ny = y + DIR_DY[edir];
                 if (!g_grid.valid(nx, ny)) return false;
@@ -301,8 +311,16 @@ static bool execAction(int x, int y, const Action& a) {
                 size_t n     = a.dirs.size();
                 if (n == 0) return false;
                 size_t start = a.randomizeDirs ? (rand32() % n) : 0;
-                for (size_t i = 0; i < n; ++i)
-                    if (tryEat(a.dirs[(start + i) % n])) return true;
+                for (size_t i = 0; i < n; ++i) {
+                    Dir d = a.dirs[(start + i) % n];
+                    if (d == DIR_ANY) {
+                        size_t s8 = rand32() % 8;
+                        for (int k = 0; k < 8; ++k)
+                            if (tryEat(static_cast<Dir>((s8 + k) % 8))) return true;
+                    } else {
+                        if (tryEat(d)) return true;
+                    }
+                }
                 return false;
             }
         }
@@ -310,6 +328,7 @@ static bool execAction(int x, int y, const Action& a) {
         case ACTION_SWAP:
         case ACTION_SWAP_FIRST: {
             auto trySwap = [&](Dir sdir) -> bool {
+                if (sdir == DIR_ANY || sdir == DIR_NONE) return false;  // guard sentinel values
                 int nx = x + DIR_DX[sdir];
                 int ny = y + DIR_DY[sdir];
                 if (!g_grid.valid(nx, ny)) return false;
@@ -347,8 +366,16 @@ static bool execAction(int x, int y, const Action& a) {
                 size_t n     = a.dirs.size();
                 if (n == 0) return false;
                 size_t start = a.randomizeDirs ? (rand32() % n) : 0;
-                for (size_t i = 0; i < n; ++i)
-                    if (trySwap(a.dirs[(start + i) % n])) return true;
+                for (size_t i = 0; i < n; ++i) {
+                    Dir d = a.dirs[(start + i) % n];
+                    if (d == DIR_ANY) {
+                        size_t s8 = rand32() % 8;
+                        for (int k = 0; k < 8; ++k)
+                            if (trySwap(static_cast<Dir>((s8 + k) % 8))) return true;
+                    } else {
+                        if (trySwap(d)) return true;
+                    }
+                }
                 return false;
             }
         }
