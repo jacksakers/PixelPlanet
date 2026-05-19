@@ -1,5 +1,4 @@
 #include "entity.hpp"
-#include "grid.hpp"
 
 namespace pp {
 
@@ -30,14 +29,12 @@ float EntityRegistry::getDensity(int id) const {
 }
 
 int EntityDef::getVarSlot(const std::string& varName) const {
-    if (varName == "life") return LIFE_VAR_SLOT;  // built-in reserved slot
     for (const auto& v : variables)
         if (v.name == varName) return v.slot;
     return -1;
 }
 
 uint16_t EntityDef::getVarDefault(int slot) const {
-    if (slot == LIFE_VAR_SLOT) return lifespan;  // built-in life slot
     for (const auto& v : variables)
         if (v.slot == slot) return v.defaultVal;
     return 0;

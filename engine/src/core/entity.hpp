@@ -26,8 +26,7 @@ struct EntityDef {
     std::array<uint8_t, 4> color = { 255, 255, 255, 255 };  // RGBA
     float       density  = 1.0f;   // > 0 = participates in gravity
     bool        isStatic = false;  // engine skips rule evaluation entirely
-    uint16_t    lifespan = 0;      // 0 = immortal; >0 = ticks before cell auto-dies
-    std::vector<VarDef> variables; // named per-cell variables (max 4, slots 0–3)
+    std::vector<VarDef> variables; // named per-cell variables (max 4)
 
     // Look up the slot index for a variable name (-1 if not found).
     int getVarSlot(const std::string& name) const;

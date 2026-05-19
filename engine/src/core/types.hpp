@@ -21,7 +21,6 @@ enum Dir : int {
     DIR_DOWN_LEFT  = 6,
     DIR_DOWN_RIGHT = 7,
     DIR_NONE       = -1,
-    DIR_ANY        = 8,  // sentinel: try all 8 directions in random order
 };
 
 // dx / dy offsets for each Dir value (index matches Dir enum).

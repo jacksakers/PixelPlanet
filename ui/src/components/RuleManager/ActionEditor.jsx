@@ -5,7 +5,7 @@
  */
 
 import { useSimContext } from '../../store/SimContext.jsx';
-import { ACTION_TYPES, ACTION_DIRECTIONS, MODIFY_OPS } from '../../shared/defaults.js';
+import { ACTION_TYPES, DIRECTIONS, MODIFY_OPS } from '../../shared/defaults.js';
 
 const S = {
   wrap: {
@@ -64,13 +64,16 @@ function EntitySelect({ value, onChange }) {
   );
 }
 
-/** Dropdown of variable names from a given entity — always shows built-in 'life' first. */
+/** Dropdown of variable names from a given entity. */
 function VarSelect({ entityId, value, onChange, entities }) {
   const entity = entities?.find((e) => e.id === entityId);
   const vars   = entity?.variables ?? [];
+  if (vars.length === 0) {
+    return <span style={{ fontSize: '0.74rem', color: '#666' }}>(no variables on entity)</span>;
+  }
   return (
-    <select style={S.sel} value={value ?? 'life'} onChange={(e) => onChange(e.target.value)}>
-      <option value="life">life (built-in)</option>
+    <select style={S.sel} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">— var —</option>
       {vars.map((v) => <option key={v.name} value={v.name}>{v.name}</option>)}
     </select>
   );
@@ -99,7 +102,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
       {/* Move — single direction */}
       {action.type === 'Move' && (
         <select style={S.sel} value={action.dir ?? 'down'} onChange={(e) => set({ dir: e.target.value })}>
-          {ACTION_DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
+          {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
         </select>
       )}
 
@@ -109,7 +112,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
           {(action.dirs ?? []).map((d, i) => (
             <div key={i} style={S.multiDirsRow}>
               <select style={S.sel} value={d} onChange={(e) => updateDir(i, e.target.value)}>
-                {ACTION_DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
+                {DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
               </select>
               <button style={{ ...S.delBtn, marginLeft: 0 }} onClick={() => removeDir(i)}>✕</button>
             </div>
@@ -145,7 +148,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
         <>
           <EntitySelect value={action.targetId} onChange={(v) => set({ targetId: v })} />
           <select style={S.sel} value={action.dir ?? 'up'} onChange={(e) => set({ dir: e.target.value })}>
-            {ACTION_DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
+            {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
           </select>
         </>
       )}
@@ -176,7 +179,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
       {action.type === 'Eat' && (
         <>
           <select style={S.sel} value={action.dir ?? 'up'} onChange={(e) => set({ dir: e.target.value })}>
-            {ACTION_DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
+            {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
           </select>
           <span style={{ fontSize: '0.74rem', color: '#888' }}>eats</span>
           <select style={S.sel} value={String(action.target ?? 'ANY')}
@@ -221,7 +224,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
           {(action.dirs ?? []).map((d, i) => (
             <div key={i} style={S.multiDirsRow}>
               <select style={S.sel} value={d} onChange={(e) => updateDir(i, e.target.value)}>
-                {ACTION_DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
+                {DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
               </select>
               <button style={{ ...S.delBtn, marginLeft: 0 }} onClick={() => removeDir(i)}>✕</button>
             </div>
@@ -238,7 +241,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
       {action.type === 'Swap' && (
         <>
           <select style={S.sel} value={action.dir ?? 'up'} onChange={(e) => set({ dir: e.target.value })}>
-            {ACTION_DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
+            {DIRECTIONS.map((d) => <option key={d}>{d}</option>)}
           </select>
           <span style={{ fontSize: '0.74rem', color: '#888' }}>with</span>
           <select style={S.sel} value={String(action.target ?? 'ANY')}
@@ -263,7 +266,7 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
           {(action.dirs ?? []).map((d, i) => (
             <div key={i} style={S.multiDirsRow}>
               <select style={S.sel} value={d} onChange={(e) => updateDir(i, e.target.value)}>
-                {ACTION_DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
+                {DIRECTIONS.map((dir) => <option key={dir}>{dir}</option>)}
               </select>
               <button style={{ ...S.delBtn, marginLeft: 0 }} onClick={() => removeDir(i)}>✕</button>
             </div>

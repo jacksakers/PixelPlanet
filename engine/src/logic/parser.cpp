@@ -58,7 +58,6 @@ static Dir parseDir(const std::string& s) {
     if (s == "up-left")     return DIR_UP_LEFT;
     if (s == "up-right")    return DIR_UP_RIGHT;
     if (s == "down-left")   return DIR_DOWN_LEFT;
-    if (s == "any")          return DIR_ANY;
     if (s == "down-right")  return DIR_DOWN_RIGHT;
     return DIR_DOWN;  // safe fallback
 }
@@ -301,7 +300,6 @@ bool parseConfig(const char* jsonStr) {
                 def.name     = e.value("name",     "");
                 def.density  = e.value("density",  1.0f);
                 def.isStatic = e.value("isStatic", false);
-                def.lifespan = static_cast<uint16_t>(e.value("lifespan", 0));
 
                 if (e.contains("color") && e["color"].is_array() && e["color"].size() == 4) {
                     def.color[0] = static_cast<uint8_t>(e["color"][0].get<int>());
