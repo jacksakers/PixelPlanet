@@ -232,11 +232,28 @@ export default function EntityEditor({ entityId }) {
             Static (immovable, no rule evaluation)
           </label>
 
+          <label style={field.label}>
+            Lifespan (ticks)
+            <input
+              type="number"
+              min={0}
+              max={65535}
+              step={1}
+              style={field.input}
+              value={draft.lifespan ?? 0}
+              onChange={(e) => commit({ lifespan: Math.max(0, Math.min(65535, parseInt(e.target.value) || 0)) })}
+              disabled={draft.isStatic}
+            />
+            <span style={{ fontSize: '0.7rem', color: '#555' }}>
+              {'0 = immortal  ·  >0 = auto-dies after this many ticks (uses built-in "life" variable)'}
+            </span>
+          </label>
+
           {/* ── Variables ─────────────────────────────────────────────────── */}
           <div style={{ borderTop: '1px solid #2a2a3a', paddingTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <span style={{ fontSize: '0.72rem', color: '#666', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                Variables ({(draft.variables ?? []).length}/{MAX_VARS})
+                Variables ({(draft.variables ?? []).length}/{MAX_VARS}) <span style={{ color: '#445', fontWeight: 400 }}>+ life (built-in)</span>
               </span>
               {(draft.variables ?? []).length < MAX_VARS && (
                 <button

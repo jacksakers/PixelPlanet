@@ -93,22 +93,18 @@ function TargetSelect({ value, onChange }) {
   );
 }
 
-/** Variable name dropdown — lists variables from a given entity. */
+/** Variable name dropdown — lists 'life' built-in first, then entity variables. */
 function VarNameSelect({ entityId, value, onChange }) {
   const { entities } = useSimContext();
   const entity = entities.find((e) => e.id === entityId);
   const vars   = entity?.variables ?? [];
-  // Also gather vars from all entities for global context (entityId may be null).
   const allVars = entityId == null
     ? [...new Set(entities.flatMap((e) => (e.variables ?? []).map((v) => v.name)))]
     : vars.map((v) => v.name);
 
-  if (allVars.length === 0) {
-    return <span style={{ fontSize: '0.72rem', color: '#555' }}>(add variables to entity first)</span>;
-  }
   return (
-    <select style={S.sel} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
-      <option value="">— var —</option>
+    <select style={S.sel} value={value ?? 'life'} onChange={(e) => onChange(e.target.value)}>
+      <option value="life">life (built-in)</option>
       {allVars.map((name) => <option key={name} value={name}>{name}</option>)}
     </select>
   );

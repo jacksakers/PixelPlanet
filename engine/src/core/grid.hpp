@@ -6,10 +6,12 @@
 namespace pp {
 
 // ---------------------------------------------------------------------------
-// Per-cell variable slots.  Each cell may carry up to 4 named variables
-// (mapped by EntityDef::variables).  Stored as uint16_t (0-65535).
+// Per-cell variable slots.
+//   Slots 0–3  : user-defined variables (mapped by EntityDef::variables, max 4).
+//   Slot  4    : reserved for the built-in 'life' counter (EntityDef::lifespan).
 // ---------------------------------------------------------------------------
-static constexpr int NUM_VARS_PER_CELL = 4;
+static constexpr int NUM_VARS_PER_CELL = 5;
+static constexpr int LIFE_VAR_SLOT     = 4;  // index of the built-in life counter
 
 // ---------------------------------------------------------------------------
 // Grid — double-buffered flat 1D array of cell IDs + per-cell state vars.

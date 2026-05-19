@@ -1,6 +1,6 @@
 # PixelPlanet — Entity & Rule Schema Reference
 
-> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-19 01:41 UTC.
+> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-19 02:49 UTC.
 > Re-run to pick up new condition types, actions, or triggers added to the codebase.
 
 ## Source file status
@@ -53,6 +53,7 @@ is entirely doable by composing the primitives below.
   "color": "[R, G, B, A]  // 0–255 each",
   "density": "number  // >0 = participates in gravity; 0 = floats/is static",
   "isStatic": "boolean  // true = never evaluated, immovable (e.g. Stone)",
+  "lifespan": "number (0–65535)  // 0 = immortal; >0 = cell auto-dies after this many ticks",
   "variables": [
     {
       "name": "string  // identifier used in VariableCheck / ModifyVariable",
@@ -63,12 +64,17 @@ is entirely doable by composing the primitives below.
 ```
 
 **Notes:**
-- Maximum **4 variables** per entity.
+- Maximum **4 user variables** per entity.  A 5th slot is reserved for the built-in **`life`** counter.
 - Entity IDs are integers 1–254. ID 0 is reserved for EMPTY.
 - `isStatic: true` entities are never touched by the rule evaluator at all —
   rules assigned to them are still stored but never run.
 - `density` only matters if a global gravity rule checks `PropertyCheck density > 0`.
   New entities automatically fall if you keep the default global gravity rule.
+- **Lifespan / built-in `life` variable**: set `lifespan > 0` to give cells a finite lifetime.
+  The engine auto-decrements the `life` counter every tick and destroys the cell when it
+  reaches 0 — before any rules run.  You can read or modify `life` in `VariableCheck` and
+  `ModifyVariable` actions just like a named variable.  It does **not** count against the
+  4-variable limit.
 
 ---
 
@@ -259,11 +265,11 @@ Inverts a single child condition.
 
 ### `Move` *(C++ enum: `ACTION_MOVE`)*
 
-Moves the cell one step in a single direction if the target cell is empty. Fails silently if blocked.
+Moves the cell one step in a single direction if the target cell is empty. Fails silently if blocked. Use `"dir": "any"` to try all 8 directions in random order (equivalent to MoveFirst with all 8 dirs).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `dir` | `Direction` | Direction to move. |
+| `dir` | `Direction | "any"` | Direction to move. `"any"` = try all 8 in random order. |
 
 **Example:**
 ```json
@@ -305,16 +311,16 @@ Replaces this cell with a different entity type in-place. Variables are reset to
 
 ### `Spawn` *(C++ enum: `ACTION_SPAWN`)*
 
-Creates a new cell of the given entity type in a neighbouring slot. Does nothing if that slot is occupied.
+Creates a new cell of the given entity type in a neighbouring slot. Does nothing if that slot is occupied. Use `"dir": "any"` to find the first empty neighbour in a random direction — perfect for growing plants or spreading organisms.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `targetId` | `name|id` | **Prefer the entity name string** (e.g. `"Plankton"`). Numeric ID also accepted for legacy rules. |
-| `dir` | `Direction` | Which neighbouring slot to spawn into. |
+| `dir` | `Direction | "any"` | Which neighbouring slot to spawn into. `"any"` = first empty neighbour (random order). |
 
 **Example:**
 ```json
-{ "type": "Spawn", "targetId": "Plankton", "dir": "up" }
+{ "type": "Spawn", "targetId": "Plankton", "dir": "any" }
 ```
 
 ---
