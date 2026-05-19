@@ -161,6 +161,15 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
       return { ...d, actions: next };
     });
   }
+  function moveAction(i, dir) {
+    setDraft((d) => {
+      const next = [...d.actions];
+      const j = i + dir;
+      if (j < 0 || j >= next.length) return d;
+      [next[i], next[j]] = [next[j], next[i]];
+      return { ...d, actions: next };
+    });
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -233,13 +242,30 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
           <div style={S.section}>
             <span style={S.sectionTitle}>Actions (run in order, stop on first movement)</span>
             {draft.actions.map((a, i) => (
-              <ActionEditor
-                key={i}
-                action={a}
-                entityId={entityId}
-                onChange={(a) => updateAction(i, a)}
-                onDelete={() => deleteAction(i)}
-              />
+              <div key={i} style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 4 }}>
+                  <button
+                    onClick={() => moveAction(i, -1)}
+                    disabled={i === 0}
+                    title="Move up"
+                    style={{ padding: '1px 5px', background: 'none', border: '1px solid #2a2a3a', borderRadius: 4, color: i === 0 ? '#333' : '#888', cursor: i === 0 ? 'default' : 'pointer', fontSize: '0.7rem', lineHeight: 1 }}
+                  >▲</button>
+                  <button
+                    onClick={() => moveAction(i, 1)}
+                    disabled={i === draft.actions.length - 1}
+                    title="Move down"
+                    style={{ padding: '1px 5px', background: 'none', border: '1px solid #2a2a3a', borderRadius: 4, color: i === draft.actions.length - 1 ? '#333' : '#888', cursor: i === draft.actions.length - 1 ? 'default' : 'pointer', fontSize: '0.7rem', lineHeight: 1 }}
+                  >▼</button>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <ActionEditor
+                    action={a}
+                    entityId={entityId}
+                    onChange={(a) => updateAction(i, a)}
+                    onDelete={() => deleteAction(i)}
+                  />
+                </div>
+              </div>
             ))}
             <button style={S.addAction} onClick={addAction}>+ Add Action</button>
           </div>
