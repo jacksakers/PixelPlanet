@@ -323,6 +323,52 @@ static bool execAction(int x, int y, const Action& a) {
                 return false;
             }
         }
+
+        case ACTION_MOVE_TOWARD:
+        case ACTION_MOVE_AWAY: {
+            // Scan all 8 rays up to senseRange cells each.
+            // Record the nearest cell that matches senseTarget.
+            int bestDx = 0, bestDy = 0;
+            int bestDist = a.senseRange + 1;
+            bool found = false;
+
+            for (int d = 0; d < 8; ++d) {
+                for (int step = 1; step <= a.senseRange; ++step) {
+                    int nx = x + DIR_DX[d] * step;
+                    int ny = y + DIR_DY[d] * step;
+                    if (!g_grid.valid(nx, ny)) break;
+                    uint8_t cell = g_grid.write[g_grid.idx(nx, ny)];
+                    bool match = false;
+                    if      (a.senseTarget == TARGET_EMPTY) match = (cell == EMPTY_ID);
+                    else if (a.senseTarget == TARGET_ANY)   match = (cell != EMPTY_ID);
+                    else                                    match = (cell == static_cast<uint8_t>(a.senseTarget));
+                    if (match) {
+                        if (step < bestDist) {
+                            bestDist = step;
+                            bestDx   = nx - x;
+                            bestDy   = ny - y;
+                            found    = true;
+                        }
+                        break; // nearest on this ray found
+                    }
+                }
+            }
+            if (!found) return false;
+
+            // Flip direction for MoveAway.
+            if (a.type == ACTION_MOVE_AWAY) { bestDx = -bestDx; bestDy = -bestDy; }
+
+            // Sign-normalise and pick the Dir with the best dot product.
+            int sdx = (bestDx > 0) ? 1 : (bestDx < 0) ? -1 : 0;
+            int sdy = (bestDy > 0) ? 1 : (bestDy < 0) ? -1 : 0;
+            int   bestScore = -999;
+            Dir   moveDir   = DIR_DOWN;
+            for (int d = 0; d < 8; ++d) {
+                int score = DIR_DX[d] * sdx + DIR_DY[d] * sdy;
+                if (score > bestScore) { bestScore = score; moveDir = static_cast<Dir>(d); }
+            }
+            return tryMove(x, y, moveDir);
+        }
     }
     return false;
 }
@@ -343,7 +389,8 @@ static bool execRule(const Rule& rule, int x, int y, uint8_t cellId, bool* moved
             // If a movement action succeeded, the pixel is gone from (x,y).
             if (action.type == ACTION_MOVE || action.type == ACTION_MOVE_FIRST ||
                 action.type == ACTION_EAT  || action.type == ACTION_EAT_FIRST  ||
-                action.type == ACTION_SWAP || action.type == ACTION_SWAP_FIRST) {
+                action.type == ACTION_SWAP || action.type == ACTION_SWAP_FIRST ||
+                action.type == ACTION_MOVE_TOWARD || action.type == ACTION_MOVE_AWAY) {
                 didMove = true;
                 break;
             }

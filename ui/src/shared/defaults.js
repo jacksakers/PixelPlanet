@@ -242,7 +242,7 @@ export const CONDITION_TYPES = [
 
 export const ACTION_TYPES = [
   'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
-  'Eat', 'EatFirst', 'Swap', 'SwapFirst',
+  'Eat', 'EatFirst', 'Swap', 'SwapFirst', 'MoveToward', 'MoveAway',
 ];
 
 export const PROPERTY_OPS = ['<', '<=', '==', '!=', '>', '>='];
@@ -255,3 +255,46 @@ export const MODIFY_OPS = [
   { value: '*=',  label: 'Multiply (×)' },
   { value: 'set', label: 'Set (=)' },
 ];
+
+// ---------------------------------------------------------------------------
+// Pack storage  (named snapshots of the full simulation config)
+// ---------------------------------------------------------------------------
+export const PACKS_STORAGE_KEY = 'pixelplanet_packs_v1';
+
+/** Load all saved packs from localStorage. Returns array of pack objects. */
+export function loadPacks() {
+  try {
+    const raw = localStorage.getItem(PACKS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+/**
+ * Save the current config as a named pack.
+ * Returns the new packs array.
+ */
+export function savePack(name, entities, globalRules, entityRules) {
+  const packs = loadPacks();
+  const pack = {
+    id:          `pack_${Date.now().toString(36)}`,
+    name:        name.trim() || 'Unnamed Pack',
+    savedAt:     Date.now(),
+    entities,
+    globalRules,
+    entityRules,
+  };
+  const next = [pack, ...packs];
+  try { localStorage.setItem(PACKS_STORAGE_KEY, JSON.stringify(next)); } catch (_) {}
+  return next;
+}
+
+/** Delete a pack by id. Returns the new packs array. */
+export function deletePack(id) {
+  const next = loadPacks().filter((p) => p.id !== id);
+  try { localStorage.setItem(PACKS_STORAGE_KEY, JSON.stringify(next)); } catch (_) {}
+  return next;
+}

@@ -96,7 +96,7 @@ pixel-planet/
 |-------|-------------|--------|
 | **1** | High-performance WASM foundation + falling sand demo | ✅ **Done** |
 | **2** | Data-driven engine — JSON rule AST parser | ✅ **Done** |
-| **3** | Variables, lifetimes, boolean logic, Eat/Swap actions, JSON editors, rule reordering | ✅ **Done** |
+| **3** | Variables, lifetimes, boolean logic, Eat/Swap/MoveToward/MoveAway actions, Pack Manager, rule labels, JSON editors, rule reordering | ✅ **Done** |
 | 4 | Chunking, multithreading, double buffering | 🔲 Planned |
 | 5 | Visual scripting UI (Scratch-like node editor) | 🔲 Planned |
 | 6 | Ecosystem sharing, serialisation, blueprints | 🔲 Planned |
@@ -129,3 +129,34 @@ See [QUICKSTART.md](QUICKSTART.md) for full step-by-step setup.
 - **Agnostic Engine** — the backend knows only cell IDs and rules; "Sand", "Water" are UI concepts.
 - **Deterministic RNG** — seeded Xorshift-32 ensures saves replay identically on any machine.
 - **Double Buffering** — simulation reads from buffer A and writes to buffer B each tick; swap is O(1).
+
+---
+
+## Action reference (summary)
+
+| Action | Description |
+|--------|-------------|
+| `Move` | Move one step in a fixed direction if the target cell is empty. |
+| `MoveFirst` | Try a list of directions; move to the first empty one. |
+| `MoveToward` | Scan up to `range` cells in all 8 directions; move one step toward the nearest matching entity. |
+| `MoveAway` | Same scan; move one step **away** from the nearest match. |
+| `Transform` | Replace self with a different entity type. |
+| `Spawn` | Create a new cell of a given type in a neighbouring slot. |
+| `Destroy` | Remove self (set to EMPTY). |
+| `ModifyVariable` | Add / subtract / multiply / set a per-cell variable. |
+| `Eat` / `EatFirst` | Move into a neighbouring cell of a given type, consuming it. |
+| `Swap` / `SwapFirst` | Swap positions with a neighbouring cell of a given type. |
+
+---
+
+## Pack Manager
+
+The **⚙ Settings** tab contains the Pack Manager. Packs are named snapshots of your
+entire simulation config (all entities + all rules). They are stored locally in
+`localStorage` under the key `pixelplanet_packs_v1`.
+
+| Action | How |
+|--------|-----|
+| Save | Type a name and press **Save** (or Enter). |
+| Load | Click **Load** on any row — replaces the current config instantly. |
+| Delete | Click **✕** then confirm. |

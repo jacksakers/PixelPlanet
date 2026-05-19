@@ -75,7 +75,7 @@ export default function RuleList({ rules, selectedId, onSelect, onDelete, onAdd,
               >▼</button>
             </div>
           )}
-          <span style={S.id}>{r.id || '(unnamed)'}</span>
+          <span style={S.id}>{r.title || r.id || '(unnamed)'}</span>
           <span style={S.trigger}>{r.trigger}</span>
           {onCopy && (
             <button

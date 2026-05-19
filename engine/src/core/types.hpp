@@ -64,6 +64,8 @@ enum ActionType : int {
     ACTION_EAT_FIRST       = 7,  // Try each dir; eat first matching target
     ACTION_SWAP            = 8,  // Swap positions with a neighbour of target type
     ACTION_SWAP_FIRST      = 9,  // Try each dir; swap with first matching target
+    ACTION_MOVE_TOWARD     = 10, // Scan surroundings; move one step toward nearest matching cell
+    ACTION_MOVE_AWAY       = 11, // Scan surroundings; move one step away from nearest matching cell
 };
 
 // ---------------------------------------------------------------------------

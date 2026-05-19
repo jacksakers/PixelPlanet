@@ -96,6 +96,7 @@ const S = {
 export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
   const [draft, setDraft] = useState(() => ({
     id:        rule?.id        ?? newRuleId(),
+    title:     rule?.title     ?? '',
     trigger:   rule?.trigger   ?? 'OnTick',
     condition: rule?.condition ?? { type: 'Always' },
     actions:   rule?.actions   ?? [],
@@ -109,6 +110,7 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
     if (rule) {
       const next = {
         id:        rule.id        ?? newRuleId(),
+        title:     rule.title     ?? '',
         trigger:   rule.trigger   ?? 'OnTick',
         condition: rule.condition ?? { type: 'Always' },
         actions:   rule.actions   ?? [],
@@ -189,16 +191,18 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
       ) : (
         /* ── Form edit mode ───────────────────────────────────────────────── */
         <>
-          {/* ID */}
+          {/* Label */}
           <label style={{ fontSize: '0.78rem', color: '#777', display: 'flex', flexDirection: 'column', gap: 3 }}>
-            Rule ID
+            Label
             <input
               style={S.inp}
-              value={draft.id}
-              onChange={(e) => setDraft((d) => ({ ...d, id: e.target.value }))}
-              placeholder="unique_rule_id"
+              value={draft.title}
+              onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+              placeholder="Optional display name…"
             />
           </label>
+          {/* ID (read-only) */}
+          <span style={{ fontSize: '0.68rem', color: '#444', fontFamily: 'monospace' }}>id: {draft.id}</span>
 
           {/* Trigger */}
           <div style={S.section}>

@@ -77,7 +77,7 @@ const FALLBACK = {
   ],
   ACTION_TYPES: [
     'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
-    'Eat', 'EatFirst', 'Swap', 'SwapFirst',
+    'Eat', 'EatFirst', 'Swap', 'SwapFirst', 'MoveToward', 'MoveAway',
   ],
   DIRECTIONS: [
     'up', 'down', 'left', 'right',
@@ -275,6 +275,22 @@ const ACTION_DETAIL = {
       { name: 'target',    type: '"ANY"|name|id', desc: '**Prefer entity name string** (e.g. `"Water"`). Also accepts `"ANY"` or numeric ID.' },
     ],
     example: `{ "type": "SwapFirst", "dirs": ["left", "right"], "target": "Water", "randomize": true }`,
+  },
+  MoveToward: {
+    desc: 'Scans up to `range` cells along all 8 rays from the current cell. If a cell matching `target` is found, moves one step toward the nearest one. Does nothing if no match is found within range.',
+    fields: [
+      { name: 'target', type: '"EMPTY"|"ANY"|name|id', desc: '**Prefer entity name string** (e.g. `"Water"`). Also accepts `"EMPTY"`, `"ANY"`, or numeric ID.' },
+      { name: 'range',  type: 'number (1–32)',           desc: 'How many cells to scan along each ray. Default 5.' },
+    ],
+    example: `{ "type": "MoveToward", "target": "Algae", "range": 6 }`,
+  },
+  MoveAway: {
+    desc: 'Same scanning logic as MoveToward but moves one step **away** from the nearest match instead of toward it. Useful for prey fleeing predators.',
+    fields: [
+      { name: 'target', type: '"EMPTY"|"ANY"|name|id', desc: '**Prefer entity name string** (e.g. `"Predator"`). Also accepts `"EMPTY"`, `"ANY"`, or numeric ID.' },
+      { name: 'range',  type: 'number (1–32)',           desc: 'How many cells to scan along each ray. Default 5.' },
+    ],
+    example: `{ "type": "MoveAway", "target": "Predator", "range": 8 }`,
   },
 };
 
@@ -497,7 +513,7 @@ ${codeBlock('json', JSON.stringify({
 ### Evaluation order per cell per tick
 1. Global rules are tried first (in array order). First rule that fires wins.
 2. If no global rule fired, entity-specific rules are tried (in array order).
-3. Within a rule: all actions run in order **unless** a movement action (Move, MoveFirst)
+3. Within a rule: all actions run in order **unless** a movement action (Move, MoveFirst, MoveToward, MoveAway, Eat, EatFirst, Swap, SwapFirst)
    succeeds — then execution stops (the cell is no longer at its original position).
 
 ---

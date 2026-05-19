@@ -11,8 +11,8 @@
 
 import { useState, useRef } from 'react';
 import { useSimContext } from '../store/SimContext.jsx';
+import PackManager from './PackManager.jsx';
 import {
-  clearStorage,
   exportBundle,
   importBundle,
 } from '../shared/defaults.js';
@@ -84,13 +84,12 @@ export default function SettingsPanel() {
     importConfig,
   } = useSimContext();
 
-  const [exportMode, setExportMode]       = useState('all');   // 'all' | 'selected'
+  const [exportMode, setExportMode]       = useState('all');
   const [exportEntityId, setExportEntityId] = useState(entities[0]?.id ?? null);
   const [exportText, setExportText]       = useState('');
   const [importText, setImportText]       = useState('');
-  const [importStatus, setImportStatus]   = useState(null);    // null | { ok, msg }
+  const [importStatus, setImportStatus]   = useState(null);
   const [confirmReset, setConfirmReset]   = useState(false);
-  const [confirmClear, setConfirmClear]   = useState(false);
 
   // ── Export ────────────────────────────────────────────────────────────────
   function handleExport() {
@@ -123,12 +122,6 @@ export default function SettingsPanel() {
   }
 
   // ── Storage management ────────────────────────────────────────────────────
-  function handleClearStorage() {
-    clearStorage();
-    setConfirmClear(false);
-    setImportStatus({ ok: true, msg: 'Local storage cleared. Reload to apply defaults.' });
-  }
-
   function handleReset() {
     resetDefaults();
     setConfirmReset(false);
@@ -137,6 +130,9 @@ export default function SettingsPanel() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* ── Packs ── */}
+      <PackManager />
 
       {/* ── Export ── */}
       <div style={S.section}>
@@ -198,18 +194,6 @@ export default function SettingsPanel() {
             <span style={{ fontSize: '0.74rem', color: '#cc8888' }}>Sure? This clears all entities &amp; rules.</span>
             <button style={S.btn(true)} onClick={handleReset}>Yes, reset</button>
             <button style={S.btn(false)} onClick={() => setConfirmReset(false)}>Cancel</button>
-          </div>
-        )}
-
-        {!confirmClear ? (
-          <button style={S.btn(true)} onClick={() => setConfirmClear(true)}>
-            Clear saved data (localStorage)
-          </button>
-        ) : (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: '0.74rem', color: '#cc8888' }}>This removes saved config on next reload.</span>
-            <button style={S.btn(true)} onClick={handleClearStorage}>Yes, clear</button>
-            <button style={S.btn(false)} onClick={() => setConfirmClear(false)}>Cancel</button>
           </div>
         )}
       </div>

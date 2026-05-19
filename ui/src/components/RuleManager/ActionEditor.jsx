@@ -279,6 +279,31 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
         </div>
       )}
 
+      {/* MoveToward / MoveAway — sense target entity within range, then step toward/away */}
+      {(action.type === 'MoveToward' || action.type === 'MoveAway') && (
+        <>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>
+            {action.type === 'MoveToward' ? 'toward' : 'away from'}
+          </span>
+          <select style={S.sel} value={String(action.target ?? 'ANY')}
+            onChange={(e) => set({ target: e.target.value })}>
+            <option value="ANY">ANY</option>
+            <option value="EMPTY">EMPTY</option>
+            {entities.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+          </select>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>range</span>
+          <input
+            style={{ ...S.sel, width: 48 }}
+            type="number"
+            min="1"
+            max="32"
+            step="1"
+            value={action.range ?? 5}
+            onChange={(e) => set({ range: Math.max(1, parseInt(e.target.value) || 1) })}
+          />
+        </>
+      )}
+
       <button style={S.delBtn} onClick={onDelete}>✕</button>
     </div>
   );

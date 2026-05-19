@@ -75,6 +75,11 @@ struct Action {
     // ACTION_SWAP / ACTION_SWAP_FIRST — swap positions with a neighbour of swapTarget type.
     // dir / dirs / randomizeDirs reused from above.
     int         swapTarget = TARGET_ANY;  // TARGET_ANY | entity ID
+
+    // ACTION_MOVE_TOWARD / ACTION_MOVE_AWAY — scan surroundings up to senseRange cells;
+    // move one step toward (or away from) the nearest cell matching senseTarget.
+    int  senseTarget = TARGET_ANY;  // TARGET_EMPTY | TARGET_ANY | entity ID
+    int  senseRange  = 5;           // how many cells to scan along each ray (1–32)
 };
 
 // ---------------------------------------------------------------------------

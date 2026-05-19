@@ -1,6 +1,6 @@
 # PixelPlanet — Entity & Rule Schema Reference
 
-> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-18 14:18 UTC.
+> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-19 01:41 UTC.
 > Re-run to pick up new condition types, actions, or triggers added to the codebase.
 
 ## Source file status
@@ -86,7 +86,7 @@ is entirely doable by composing the primitives below.
 ### Evaluation order per cell per tick
 1. Global rules are tried first (in array order). First rule that fires wins.
 2. If no global rule fired, entity-specific rules are tried (in array order).
-3. Within a rule: all actions run in order **unless** a movement action (Move, MoveFirst)
+3. Within a rule: all actions run in order **unless** a movement action (Move, MoveFirst, MoveToward, MoveAway, Eat, EatFirst, Swap, SwapFirst)
    succeeds — then execution stops (the cell is no longer at its original position).
 
 ---
@@ -421,6 +421,38 @@ Tries each direction in order and swaps with the first cell that matches the tar
 
 ---
 
+### `MoveToward`
+
+Scans up to `range` cells along all 8 rays from the current cell. If a cell matching `target` is found, moves one step toward the nearest one. Does nothing if no match is found within range.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `target` | `"EMPTY"|"ANY"|name|id` | **Prefer entity name string** (e.g. `"Water"`). Also accepts `"EMPTY"`, `"ANY"`, or numeric ID. |
+| `range` | `number (1–32)` | How many cells to scan along each ray. Default 5. |
+
+**Example:**
+```json
+{ "type": "MoveToward", "target": "Algae", "range": 6 }
+```
+
+---
+
+### `MoveAway`
+
+Same scanning logic as MoveToward but moves one step **away** from the nearest match instead of toward it. Useful for prey fleeing predators.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `target` | `"EMPTY"|"ANY"|name|id` | **Prefer entity name string** (e.g. `"Predator"`). Also accepts `"EMPTY"`, `"ANY"`, or numeric ID. |
+| `range` | `number (1–32)` | How many cells to scan along each ray. Default 5. |
+
+**Example:**
+```json
+{ "type": "MoveAway", "target": "Predator", "range": 8 }
+```
+
+---
+
 ## Directions
 
 Valid string values for any `dir` or `dirs` field:
@@ -491,6 +523,8 @@ or `parser.cpp` alongside this document.
 - `ACTION_EAT_FIRST` — Try each dir; eat first matching target
 - `ACTION_SWAP` — Swap positions with a neighbour of target type
 - `ACTION_SWAP_FIRST` — Try each dir; swap with first matching target
+- `ACTION_MOVE_TOWARD` — Scan surroundings; move one step toward nearest matching cell
+- `ACTION_MOVE_AWAY` — Scan surroundings; move one step away from nearest matching cell
 
 ---
 

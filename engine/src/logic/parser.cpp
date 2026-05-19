@@ -246,6 +246,12 @@ static Action parseAction(const nlohmann::json& j) {
                     a.dirs.push_back(parseDir(d.get<std::string>()));
         }
     }
+    else if (type == "MoveToward" || type == "MoveAway") {
+        a.type        = (type == "MoveToward") ? ACTION_MOVE_TOWARD : ACTION_MOVE_AWAY;
+        a.senseRange  = j.value("range", 5);
+        if (j.contains("target"))
+            a.senseTarget = resolveTarget(j["target"]);
+    }
 
     return a;
 }
