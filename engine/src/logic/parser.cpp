@@ -58,6 +58,7 @@ static Dir parseDir(const std::string& s) {
     if (s == "up-left")     return DIR_UP_LEFT;
     if (s == "up-right")    return DIR_UP_RIGHT;
     if (s == "down-left")   return DIR_DOWN_LEFT;
+    if (s == "any")          return DIR_ANY;
     if (s == "down-right")  return DIR_DOWN_RIGHT;
     return DIR_DOWN;  // safe fallback
 }

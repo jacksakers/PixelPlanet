@@ -230,9 +230,16 @@ export function importBundle(jsonStr, existingEntities) {
   }
 }
 
+// Directions used in condition editors (NeighborCheck — 'any' makes no sense here).
 export const DIRECTIONS = [
   'up', 'down', 'left', 'right',
   'up-left', 'up-right', 'down-left', 'down-right',
+];
+
+// Directions used in action editors — includes 'any' (random empty neighbour).
+export const ACTION_DIRECTIONS = [
+  ...DIRECTIONS,
+  'any',  // tries all 8 dirs in random order; moves/spawns into first valid slot
 ];
 
 export const CONDITION_TYPES = [

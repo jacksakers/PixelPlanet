@@ -37,6 +37,7 @@ namespace pp {
 static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId);
 
 static bool evalNeighborCheck(int x, int y, Dir dir, int targetId) {
+    if (dir == DIR_ANY || dir == DIR_NONE) return false;  // guard sentinel values
     int nx = x + DIR_DX[dir];
     int ny = y + DIR_DY[dir];
     if (!g_grid.valid(nx, ny)) return false;
@@ -137,6 +138,7 @@ static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId) {
 
 // Try to move the cell at (x,y) to (x+dx, y+dy) if that cell is EMPTY.
 static bool tryMove(int x, int y, Dir dir) {
+    if (dir == DIR_ANY || dir == DIR_NONE) return false;  // guard sentinel values
     int nx = x + DIR_DX[dir];
     int ny = y + DIR_DY[dir];
     if (!g_grid.valid(nx, ny)) return false;
@@ -160,6 +162,12 @@ static bool execMoveFirst(int x, int y, const std::vector<Dir>& dirs, bool rando
 static bool execAction(int x, int y, const Action& a) {
     switch (a.type) {
         case ACTION_MOVE:
+            if (a.dir == DIR_ANY) {
+                // Try all 8 directions in a random order.
+                const std::vector<Dir> all8 = {DIR_UP,DIR_DOWN,DIR_LEFT,DIR_RIGHT,
+                                               DIR_UP_LEFT,DIR_UP_RIGHT,DIR_DOWN_LEFT,DIR_DOWN_RIGHT};
+                return execMoveFirst(x, y, all8, true);
+            }
             return tryMove(x, y, a.dir);
 
         case ACTION_MOVE_FIRST:
@@ -180,20 +188,29 @@ static bool execAction(int x, int y, const Action& a) {
         }
 
         case ACTION_SPAWN: {
-            int nx = x + DIR_DX[a.spawnDir];
-            int ny = y + DIR_DY[a.spawnDir];
-            if (!g_grid.valid(nx, ny)) return false;
-            int di = g_grid.idx(nx, ny);
-            if (g_grid.write[di] != EMPTY_ID) return false;
-            g_grid.write[di] = static_cast<uint8_t>(a.targetEntityId);
-            // Initialise vars to the spawned entity's defaults.
-            const EntityDef* def = g_entityRegistry.get(a.targetEntityId);
-            if (def) {
-                for (int s = 0; s < NUM_VARS_PER_CELL; ++s)
-                    g_grid.vars_write[di * NUM_VARS_PER_CELL + s] = def->getVarDefault(s);
+            auto trySpawnDir = [&](Dir sd) -> bool {
+                int nx = x + DIR_DX[sd];
+                int ny = y + DIR_DY[sd];
+                if (!g_grid.valid(nx, ny)) return false;
+                int di = g_grid.idx(nx, ny);
+                if (g_grid.write[di] != EMPTY_ID) return false;
+                g_grid.write[di] = static_cast<uint8_t>(a.targetEntityId);
+                // Initialise vars to the spawned entity's defaults.
+                const EntityDef* sDef = g_entityRegistry.get(a.targetEntityId);
+                if (sDef) {
+                    for (int s = 0; s < NUM_VARS_PER_CELL; ++s)
+                        g_grid.vars_write[di * NUM_VARS_PER_CELL + s] = sDef->getVarDefault(s);
+                }
+                g_grid.dirty[di] = true;
+                return true;
+            };
+            if (a.spawnDir == DIR_ANY) {
+                size_t start = rand32() % 8;
+                for (int ki = 0; ki < 8; ++ki)
+                    if (trySpawnDir(static_cast<Dir>((start + ki) % 8))) return true;
+                return false;
             }
-            g_grid.dirty[di] = true;
-            return true;
+            return trySpawnDir(a.spawnDir);
         }
 
         case ACTION_DESTROY: {
@@ -272,6 +289,12 @@ static bool execAction(int x, int y, const Action& a) {
             };
 
             if (a.type == ACTION_EAT) {
+                if (a.dir == DIR_ANY) {
+                    size_t start = rand32() % 8;
+                    for (int ki = 0; ki < 8; ++ki)
+                        if (tryEat(static_cast<Dir>((start + ki) % 8))) return true;
+                    return false;
+                }
                 return tryEat(a.dir);
             } else {
                 // EatFirst: try each direction, randomising the starting index.
@@ -312,6 +335,12 @@ static bool execAction(int x, int y, const Action& a) {
             };
 
             if (a.type == ACTION_SWAP) {
+                if (a.dir == DIR_ANY) {
+                    size_t start = rand32() % 8;
+                    for (int ki = 0; ki < 8; ++ki)
+                        if (trySwap(static_cast<Dir>((start + ki) % 8))) return true;
+                    return false;
+                }
                 return trySwap(a.dir);
             } else {
                 // SwapFirst: try each direction, randomising the starting index.
@@ -427,7 +456,7 @@ void evaluateTick() {
             // Skip static entities (stone, etc.)
             const EntityDef* def = g_entityRegistry.get(static_cast<int>(cellId));
             if (def && def->isStatic) continue;
-
+            
             // ------------------------------------------------------------------
             // 1. Global rules — e.g., gravity applies to everything with density > 0
             // ------------------------------------------------------------------
