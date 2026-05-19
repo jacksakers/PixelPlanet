@@ -77,7 +77,6 @@ export default function Toolbar({
       <span style={{ fontSize: '0.72rem', letterSpacing: '0.12em', color: '#667', fontWeight: 600 }}>
         PIXEL PLANET
       </span>
-      <span style={{ fontSize: '0.65rem', color: '#334', letterSpacing: '0.06em', marginLeft: 4 }}>PHASE 3</span>
 
       <span style={S.divider} />
 

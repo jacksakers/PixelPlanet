@@ -74,10 +74,20 @@ function AppInner() {
   }, [entities, handleSelectType, handleTogglePause]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0d0d16' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '90vh', background: '#0d0d16' }}>
       {/* ── Mobile layout ─────────────────────────────────────────────── */}
       {isMobile ? (
         <>
+        <Toolbar
+            isPaused={isPaused}
+            speedIdx={speedIdx}
+            speeds={SPEEDS}
+            onTogglePause={handleTogglePause}
+            onSpeedUp={handleSpeedUp}
+            onSlowDown={handleSlowDown}
+            onClear={handleClear}
+          />
+
           {/* Canvas fills all space above the HUD */}
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <SimCanvas
