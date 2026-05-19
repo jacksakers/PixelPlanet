@@ -53,7 +53,6 @@ is entirely doable by composing the primitives below.
   "color": "[R, G, B, A]  // 0–255 each",
   "density": "number  // >0 = participates in gravity; 0 = floats/is static",
   "isStatic": "boolean  // true = never evaluated, immovable (e.g. Stone)",
-  "lifespan": "number (0–65535)  // 0 = immortal; >0 = cell auto-dies after this many ticks",
   "variables": [
     {
       "name": "string  // identifier used in VariableCheck / ModifyVariable",
@@ -688,8 +687,7 @@ click **Merge (add)** to add Lava and Spark to your sandbox.
    The engine evaluates entity rules in list order. After a rule with a movement
    action succeeds, no further rules fire for that cell this tick.
    **Always place kill/death rules BEFORE movement rules.** For example:
-   - Rule 1: `VariableCheck lifetime <= 0` → Destroy  *(checked first)*
-   - Rule 2: `Always` → [ModifyVariable lifetime -= 1, Move]  *(fires only if still alive)*
+   - Rule 1: `Always` → [ModifyVariable lifetime -= 1, Move]  *(fires only if still alive)*
 
    If you put the movement rule first, the death check is never reached while
    the cell is in motion, and the cell only dies when it can no longer move.

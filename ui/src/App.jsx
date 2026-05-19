@@ -3,7 +3,22 @@ import SimCanvas, { PIXEL_SAND } from './components/SimCanvas.jsx';
 import Toolbar       from './components/Toolbar.jsx';
 import Sidebar       from './components/Sidebar.jsx';
 import PixelPalette  from './components/PixelPalette.jsx';
+import MobileHUD     from './components/MobileHUD.jsx';
 import { SimProvider, useSimContext } from './store/SimContext.jsx';
+
+/** Returns true when the viewport width is ≤ 640 px (phone / small tablet). */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 640
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
 const DEFAULT_SPEED_IDX = 2; // 1× speed
@@ -15,6 +30,8 @@ function AppInner() {
   const [brushSize, setBrushSize] = useState(3);
   const brushSizeRef = useRef(3);
   const { entities } = useSimContext();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Simulation controls
   const [isPaused, setIsPaused] = useState(false);
@@ -58,33 +75,73 @@ function AppInner() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0d0d16' }}>
-      <Toolbar
-        isPaused={isPaused}
-        speedIdx={speedIdx}
-        speeds={SPEEDS}
-        onTogglePause={handleTogglePause}
-        onSpeedUp={handleSpeedUp}
-        onSlowDown={handleSlowDown}
-        onClear={handleClear}
-      />
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar selectedType={selectedType} />
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <SimCanvas
-            selectedTypeRef={selectedTypeRef}
-            brushSizeRef={brushSizeRef}
-            isPausedRef={isPausedRef}
-            tickRateRef={tickRateRef}
-            clearCanvasRef={clearCanvasRef}
+      {/* ── Mobile layout ─────────────────────────────────────────────── */}
+      {isMobile ? (
+        <>
+          {/* Canvas fills all space above the HUD */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <SimCanvas
+              selectedTypeRef={selectedTypeRef}
+              brushSizeRef={brushSizeRef}
+              isPausedRef={isPausedRef}
+              tickRateRef={tickRateRef}
+              clearCanvasRef={clearCanvasRef}
+            />
+          </div>
+
+          {/* Bottom HUD */}
+          <MobileHUD
+            selectedType={selectedType}
+            onSelectType={handleSelectType}
+            brushSize={brushSize}
+            onBrushSize={handleBrushSize}
+            isPaused={isPaused}
+            onTogglePause={handleTogglePause}
+            onClear={handleClear}
+            onOpenEditor={() => setSidebarOpen(true)}
           />
-        </div>
-        <PixelPalette
-          selectedType={selectedType}
-          onSelectType={handleSelectType}
-          brushSize={brushSize}
-          onBrushSize={handleBrushSize}
-        />
-      </div>
+
+          {/* Sidebar overlay (drawer) */}
+          {sidebarOpen && (
+            <Sidebar
+              selectedType={selectedType}
+              isMobile
+              onClose={() => setSidebarOpen(false)}
+            />
+          )}
+        </>
+      ) : (
+        /* ── Desktop layout ───────────────────────────────────────────── */
+        <>
+          <Toolbar
+            isPaused={isPaused}
+            speedIdx={speedIdx}
+            speeds={SPEEDS}
+            onTogglePause={handleTogglePause}
+            onSpeedUp={handleSpeedUp}
+            onSlowDown={handleSlowDown}
+            onClear={handleClear}
+          />
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <Sidebar selectedType={selectedType} />
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <SimCanvas
+                selectedTypeRef={selectedTypeRef}
+                brushSizeRef={brushSizeRef}
+                isPausedRef={isPausedRef}
+                tickRateRef={tickRateRef}
+                clearCanvasRef={clearCanvasRef}
+              />
+            </div>
+            <PixelPalette
+              selectedType={selectedType}
+              onSelectType={handleSelectType}
+              brushSize={brushSize}
+              onBrushSize={handleBrushSize}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -230,6 +230,7 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
           display: 'block',
           cursor: 'crosshair',
           imageRendering: 'pixelated',
+          touchAction: 'none',
           // Actual CSS size is set dynamically by the ResizeObserver above.
           // No width/height CSS here — the observer writes it directly.
           border: '1px solid #2d2d42',

@@ -87,10 +87,60 @@ const S = {
   },
 };
 
-export default function Sidebar({ selectedType }) {
+export default function Sidebar({ selectedType, isMobile = false, onClose }) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState(TAB_ENTITIES);
 
+  // ── Mobile: full-screen overlay drawer ──────────────────────────────────
+  if (isMobile) {
+    const drawerWidth = Math.min(360, typeof window !== 'undefined' ? window.innerWidth * 0.88 : 340);
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            zIndex: 200,
+          }}
+        />
+        {/* Drawer panel */}
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, bottom: 0,
+          width: drawerWidth,
+          background: '#131320',
+          borderRight: '1px solid #2a2a3a',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 201,
+          overflow: 'hidden',
+        }}>
+          <div style={S.header}>
+            <span style={{ fontSize: '0.72rem', color: '#556', letterSpacing: '0.05em' }}>EDITOR</span>
+            <button
+              style={{ ...S.collapseBtn, fontSize: '1rem', padding: '2px 4px' }}
+              onClick={onClose}
+              title="Close"
+            >✕</button>
+          </div>
+          <div style={S.tabs}>
+            <button style={S.tab(tab === TAB_ENTITIES)} onClick={() => setTab(TAB_ENTITIES)}>Entities</button>
+            <button style={S.tab(tab === TAB_RULES)}    onClick={() => setTab(TAB_RULES)}>Rules</button>
+            <button style={S.tab(tab === TAB_SETTINGS)} onClick={() => setTab(TAB_SETTINGS)}>⚙</button>
+          </div>
+          <div style={S.content}>
+            {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} />}
+            {tab === TAB_RULES    && <RuleManager selectedType={selectedType} />}
+            {tab === TAB_SETTINGS && <SettingsPanel />}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ── Desktop: collapsible side panel ──────────────────────────────────────
   if (collapsed) {
     return (
       <div style={S.sidebar(true)}>
