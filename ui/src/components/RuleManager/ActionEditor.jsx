@@ -64,13 +64,13 @@ function EntitySelect({ value, onChange }) {
   );
 }
 
-/** Dropdown of variable names from a given entity — always shows built-in 'life' first. */
+/** Dropdown of variable names from a given entity. Show none by default. */
 function VarSelect({ entityId, value, onChange, entities }) {
   const entity = entities?.find((e) => e.id === entityId);
   const vars   = entity?.variables ?? [];
   return (
-    <select style={S.sel} value={value ?? 'life'} onChange={(e) => onChange(e.target.value)}>
-      <option value="life">life (built-in)</option>
+    <select style={S.sel} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">— select —</option>
       {vars.map((v) => <option key={v.name} value={v.name}>{v.name}</option>)}
     </select>
   );

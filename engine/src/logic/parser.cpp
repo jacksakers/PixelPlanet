@@ -154,6 +154,8 @@ static Condition parseCondition(const nlohmann::json& j) {
         c.type = COND_NOT;
         if (j.contains("child"))
             c.children.push_back(parseCondition(j["child"]));
+        else if (j.contains("children") && j["children"].is_array() && !j["children"].empty())
+            c.children.push_back(parseCondition(j["children"][0]));
     }
     else if (type == "VariableCheck") {
         c.type    = COND_VARIABLE;

@@ -123,7 +123,7 @@ const CONDITION_DEFAULTS = {
   Chance:        { type: 'Chance', val: 50 },
   AND:           { type: 'AND', children: [] },
   OR:            { type: 'OR', children: [] },
-  NOT:           { type: 'NOT', children: [] },
+  NOT:           { type: 'NOT', child: { type: 'Always' } },
 };
 
 export default function ConditionEditor({ condition, onChange, onDelete, depth = 0, entityId }) {
@@ -142,6 +142,8 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
     next.splice(i, 1);
     set({ children: next });
   }
+  // NOT uses 'child' (singular); resolve from both formats for compat.
+  const notChild = condition.child ?? (condition.children ?? [])[0] ?? { type: 'Always' };
 
   return (
     <div style={S.wrap(depth)}>
@@ -274,8 +276,8 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
       {/* Single child for NOT */}
       {condition.type === 'NOT' && (
         <ConditionEditor
-          condition={(condition.children ?? [])[0] ?? { type: 'Always' }}
-          onChange={(c) => set({ children: [c] })}
+          condition={notChild}
+          onChange={(c) => set({ child: c, children: undefined })}
           depth={depth + 1}
           entityId={entityId}
         />
