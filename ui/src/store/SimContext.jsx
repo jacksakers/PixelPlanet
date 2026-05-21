@@ -17,8 +17,7 @@ import {
   useReducer,
   useMemo,
   useEffect,
-} from 'react';
-import {
+} from 'react';import {
   DEFAULT_ENTITIES,
   DEFAULT_GLOBAL_RULES,
   DEFAULT_ENTITY_RULES,
@@ -174,10 +173,55 @@ function reducer(state, action) {
 }
 
 // ---------------------------------------------------------------------------
+// History wrapper for undo / redo
+// ---------------------------------------------------------------------------
+const NO_HISTORY = new Set(['IMPORT_CONFIG', 'RESET_DEFAULTS', 'MERGE_IMPORT']);
+const MAX_HISTORY = 50;
+
+function historyReducer(history, action) {
+  if (action.type === 'UNDO') {
+    if (history.past.length === 0) return history;
+    const newPresent = history.past[history.past.length - 1];
+    return {
+      past:    history.past.slice(0, -1),
+      present: newPresent,
+      future:  [history.present, ...history.future.slice(0, MAX_HISTORY - 1)],
+    };
+  }
+  if (action.type === 'REDO') {
+    if (history.future.length === 0) return history;
+    const [newPresent, ...newFuture] = history.future;
+    return {
+      past:    [...history.past.slice(-(MAX_HISTORY - 1)), history.present],
+      present: newPresent,
+      future:  newFuture,
+    };
+  }
+  const newPresent = reducer(history.present, action);
+  if (newPresent === history.present) return history;
+  if (NO_HISTORY.has(action.type)) {
+    return { past: [], present: newPresent, future: [] };
+  }
+  return {
+    past:    [...history.past.slice(-(MAX_HISTORY - 1)), history.present],
+    present: newPresent,
+    future:  [],
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
 export function SimProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [history, dispatch] = useReducer(historyReducer, {
+    past:    [],
+    present: initialState,
+    future:  [],
+  });
+
+  const state    = history.present;
+  const canUndo  = history.past.length > 0;
+  const canRedo  = history.future.length > 0;
 
   // Auto-save to localStorage whenever config changes.
   useEffect(() => {
@@ -200,6 +244,8 @@ export function SimProvider({ children }) {
     importConfig:       (cfg)                 => dispatch({ type: 'IMPORT_CONFIG',        ...cfg }),
     mergeImport:        (cfg)                 => dispatch({ type: 'MERGE_IMPORT',         ...cfg }),
     resetDefaults:      ()                    => dispatch({ type: 'RESET_DEFAULTS' }),
+    undo:               ()                    => dispatch({ type: 'UNDO' }),
+    redo:               ()                    => dispatch({ type: 'REDO' }),
   }), []);
 
   // Pre-built RGBA color table: colorTable[id * 4 .. id * 4 + 3] = [r, g, b, a]
@@ -220,8 +266,8 @@ export function SimProvider({ children }) {
   }, [state.entities]);
 
   const value = useMemo(
-    () => ({ ...state, ...actions, colorTable }),
-    [state, actions, colorTable],
+    () => ({ ...state, ...actions, colorTable, canUndo, canRedo }),
+    [state, actions, colorTable, canUndo, canRedo],
   );
 
   return <SimContext.Provider value={value}>{children}</SimContext.Provider>;

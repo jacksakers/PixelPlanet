@@ -5,6 +5,7 @@
  * Always, NeighborCheck, PropertyCheck, Chance, AND, OR, NOT.
  */
 
+import { useState } from 'react';
 import { useSimContext } from '../../store/SimContext.jsx';
 import {
   CONDITION_TYPES,
@@ -50,6 +51,14 @@ const S = {
     color: '#777',
     cursor: 'pointer',
     fontSize: '0.75rem',
+  },
+  dragHandle: {
+    color: '#334',
+    cursor: 'grab',
+    fontSize: '0.9rem',
+    padding: '2px 2px 0 0',
+    flexShrink: 0,
+    userSelect: 'none',
   },
   delBtn: {
     padding: '1px 6px',
@@ -127,6 +136,8 @@ const CONDITION_DEFAULTS = {
 };
 
 export default function ConditionEditor({ condition, onChange, onDelete, depth = 0, entityId }) {
+  const [dragIdx, setDragIdx] = useState(null);
+
   function set(partial) { onChange({ ...condition, ...partial }); }
 
   function addChild() {
@@ -152,7 +163,18 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
         <select
           style={S.sel}
           value={condition.type}
-          onChange={(e) => onChange(CONDITION_DEFAULTS[e.target.value] ?? { type: e.target.value })}
+          onChange={(e) => {
+            const newType = e.target.value;
+            const isCurrentLeaf = condition.type !== 'AND' && condition.type !== 'OR' && condition.type !== 'NOT';
+            // When wrapping a leaf condition in AND/OR, preserve it as the first child.
+            if (isCurrentLeaf && (newType === 'AND' || newType === 'OR')) {
+              onChange({ type: newType, children: [condition] });
+            } else if (isCurrentLeaf && newType === 'NOT') {
+              onChange({ type: 'NOT', child: condition });
+            } else {
+              onChange(CONDITION_DEFAULTS[newType] ?? { type: newType });
+            }
+          }}
         >
           {CONDITION_TYPES.map((t) => <option key={t}>{t}</option>)}
         </select>
@@ -258,14 +280,34 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
       {(condition.type === 'AND' || condition.type === 'OR') && (
         <>
           {(condition.children ?? []).map((child, i) => (
-            <ConditionEditor
+            <div
               key={i}
-              condition={child}
-              onChange={(c) => updateChild(i, c)}
-              onDelete={() => removeChild(i)}
-              depth={depth + 1}
-              entityId={entityId}
-            />
+              draggable
+              onDragStart={(e) => { e.stopPropagation(); setDragIdx(i); }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (dragIdx !== null && dragIdx !== i) {
+                  const next = [...(condition.children ?? [])];
+                  const [item] = next.splice(dragIdx, 1);
+                  next.splice(i, 0, item);
+                  set({ children: next });
+                }
+                setDragIdx(null);
+              }}
+              style={{ display: 'flex', alignItems: 'flex-start', opacity: dragIdx === i ? 0.4 : 1 }}
+            >
+              <span style={S.dragHandle} title="Drag to reorder">⠿</span>
+              <div style={{ flex: 1 }}>
+                <ConditionEditor
+                  condition={child}
+                  onChange={(c) => updateChild(i, c)}
+                  onDelete={() => removeChild(i)}
+                  depth={depth + 1}
+                  entityId={entityId}
+                />
+              </div>
+            </div>
           ))}
           <button style={{ ...S.addBtn, alignSelf: 'flex-start', marginLeft: depth * 14 + 4 }} onClick={addChild}>
             + condition

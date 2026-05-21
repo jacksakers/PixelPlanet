@@ -5,7 +5,6 @@ import Sidebar       from './components/Sidebar.jsx';
 import PixelPalette  from './components/PixelPalette.jsx';
 import MobileHUD     from './components/MobileHUD.jsx';
 import { SimProvider, useSimContext } from './store/SimContext.jsx';
-
 /** Returns true when the viewport width is ≤ 640 px (phone / small tablet). */
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(
@@ -29,16 +28,26 @@ function AppInner() {
   const selectedTypeRef = useRef(PIXEL_SAND);
   const [brushSize, setBrushSize] = useState(3);
   const brushSizeRef = useRef(3);
-  const { entities } = useSimContext();
+  const { entities, undo, redo, canUndo, canRedo } = useSimContext();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Tool mode: 'paint' | 'fill'
+  const [toolMode, setToolMode]   = useState('paint');
+  const toolModeRef               = useRef('paint');
+  const handleSetToolMode = useCallback((mode) => {
+    toolModeRef.current = mode;
+    setToolMode(mode);
+  }, []);
 
   // Simulation controls
   const [isPaused, setIsPaused] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(DEFAULT_SPEED_IDX);
-  const isPausedRef   = useRef(false);
-  const tickRateRef   = useRef(SPEEDS[DEFAULT_SPEED_IDX]);
-  const clearCanvasRef = useRef(null); // set by SimCanvas
+  const isPausedRef    = useRef(false);
+  const tickRateRef    = useRef(SPEEDS[DEFAULT_SPEED_IDX]);
+  const clearCanvasRef = useRef(null);
+  const stepCanvasRef  = useRef(null);
+  const exportCanvasRef = useRef(null);
 
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
   useEffect(() => { tickRateRef.current = SPEEDS[speedIdx]; }, [speedIdx]);
@@ -46,7 +55,9 @@ function AppInner() {
   const handleSelectType = useCallback((type) => {
     selectedTypeRef.current = type;
     setSelectedType(type);
-  }, []);
+    // switch back to paint tool when picking a type
+    handleSetToolMode('paint');
+  }, [handleSetToolMode]);
 
   const handleBrushSize = useCallback((size) => {
     brushSizeRef.current = size;
@@ -57,21 +68,25 @@ function AppInner() {
   const handleSpeedUp     = useCallback(() => setSpeedIdx((i) => Math.min(i + 1, SPEEDS.length - 1)), []);
   const handleSlowDown    = useCallback(() => setSpeedIdx((i) => Math.max(i - 1, 0)), []);
   const handleClear       = useCallback(() => { clearCanvasRef.current?.(); }, []);
+  const handleStep        = useCallback(() => { stepCanvasRef.current?.(); }, []);
+  const handleExport      = useCallback(() => { exportCanvasRef.current?.(); }, []);
 
-  // Keyboard shortcuts — keys 1-9 map to entity IDs in order, last key = erase.
-  // Space = toggle pause.
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-      // if (e.code === 'Space') { e.preventDefault(); handleTogglePause(); return; }
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+      // Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+      // Numeric keys → entity selection
       const idx = parseInt(e.key) - 1;
       if (isNaN(idx) || idx < 0) return;
       if (idx < entities.length) handleSelectType(entities[idx].id);
-      else if (idx === entities.length) handleSelectType(0); // erase
+      else if (idx === entities.length) handleSelectType(0);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [entities, handleSelectType, handleTogglePause]);
+  }, [entities, handleSelectType, undo, redo]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '90vh', background: '#0d0d16' }}>
@@ -86,6 +101,12 @@ function AppInner() {
             onSpeedUp={handleSpeedUp}
             onSlowDown={handleSlowDown}
             onClear={handleClear}
+            onStep={handleStep}
+            onExport={handleExport}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
           />
 
           {/* Canvas fills all space above the HUD */}
@@ -96,6 +117,10 @@ function AppInner() {
               isPausedRef={isPausedRef}
               tickRateRef={tickRateRef}
               clearCanvasRef={clearCanvasRef}
+              stepCanvasRef={stepCanvasRef}
+              exportCanvasRef={exportCanvasRef}
+              toolModeRef={toolModeRef}
+              onSelectType={handleSelectType}
             />
           </div>
 
@@ -115,6 +140,7 @@ function AppInner() {
           {sidebarOpen && (
             <Sidebar
               selectedType={selectedType}
+              onSelectType={handleSelectType}
               isMobile
               onClose={() => setSidebarOpen(false)}
             />
@@ -131,9 +157,15 @@ function AppInner() {
             onSpeedUp={handleSpeedUp}
             onSlowDown={handleSlowDown}
             onClear={handleClear}
+            onStep={handleStep}
+            onExport={handleExport}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
           />
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            <Sidebar selectedType={selectedType} />
+            <Sidebar selectedType={selectedType} onSelectType={handleSelectType} />
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <SimCanvas
                 selectedTypeRef={selectedTypeRef}
@@ -141,6 +173,10 @@ function AppInner() {
                 isPausedRef={isPausedRef}
                 tickRateRef={tickRateRef}
                 clearCanvasRef={clearCanvasRef}
+                stepCanvasRef={stepCanvasRef}
+                exportCanvasRef={exportCanvasRef}
+                toolModeRef={toolModeRef}
+                onSelectType={handleSelectType}
               />
             </div>
             <PixelPalette
@@ -148,6 +184,8 @@ function AppInner() {
               onSelectType={handleSelectType}
               brushSize={brushSize}
               onBrushSize={handleBrushSize}
+              toolMode={toolMode}
+              onSetToolMode={handleSetToolMode}
             />
           </div>
         </>

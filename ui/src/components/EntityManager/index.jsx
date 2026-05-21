@@ -31,7 +31,7 @@ const S = {
   },
 };
 
-export default function EntityManager({ selectedType }) {
+export default function EntityManager({ selectedType, onSelectType }) {
   const { entities, addEntity } = useSimContext();
   const [selectedId, setSelectedId] = useState(null);
 
@@ -50,6 +50,7 @@ export default function EntityManager({ selectedType }) {
       isStatic: false,
     });
     setSelectedId(id);
+    onSelectType?.(id); // also update the active palette selection
   }
 
   return (

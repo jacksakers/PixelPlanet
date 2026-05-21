@@ -130,7 +130,7 @@ const S = {
   }),
 };
 
-export default function PixelPalette({ selectedType, onSelectType, brushSize, onBrushSize }) {
+export default function PixelPalette({ selectedType, onSelectType, brushSize, onBrushSize, toolMode = 'paint', onSetToolMode }) {
   const { entities } = useSimContext();
 
   const tools = [
@@ -203,6 +203,34 @@ export default function PixelPalette({ selectedType, onSelectType, brushSize, on
             );
           })}
         </div>
+      </div>
+
+      {/* Tool mode */}
+      <div style={{ borderTop: '1px solid #2a2a3a', padding: '7px 10px', flexShrink: 0 }}>
+        <div style={{ fontSize: '0.65rem', color: '#445', letterSpacing: '0.08em', marginBottom: 5 }}>TOOL</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button
+            title="Paint brush"
+            onClick={() => onSetToolMode?.('paint')}
+            style={{
+              flex: 1, padding: '3px 0', fontSize: '0.72rem', borderRadius: 5, cursor: 'pointer',
+              background: toolMode === 'paint' ? '#2d2d44' : 'transparent',
+              border: toolMode === 'paint' ? '1px solid #5566aa' : '1px solid #2a2a3a',
+              color: toolMode === 'paint' ? '#aaccff' : '#556',
+            }}
+          >🖌 Paint</button>
+          <button
+            title="Flood fill (click to fill connected region)"
+            onClick={() => onSetToolMode?.('fill')}
+            style={{
+              flex: 1, padding: '3px 0', fontSize: '0.72rem', borderRadius: 5, cursor: 'pointer',
+              background: toolMode === 'fill' ? '#2d2d44' : 'transparent',
+              border: toolMode === 'fill' ? '1px solid #5566aa' : '1px solid #2a2a3a',
+              color: toolMode === 'fill' ? '#aaccff' : '#556',
+            }}
+          >🪣 Fill</button>
+        </div>
+        <div style={{ fontSize: '0.58rem', color: '#334', marginTop: 4 }}>right-click = eyedropper</div>
       </div>
     </div>
   );

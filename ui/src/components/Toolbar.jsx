@@ -11,6 +11,12 @@
  *   onSpeedUp      () => void
  *   onSlowDown     () => void
  *   onClear        () => void
+ *   onStep         () => void
+ *   onExport       () => void
+ *   canUndo        boolean
+ *   canRedo        boolean
+ *   onUndo         () => void
+ *   onRedo         () => void
  */
 
 const S = {
@@ -24,6 +30,7 @@ const S = {
     borderBottom: '1px solid #2a2a3a',
     flexShrink: 0,
     userSelect: 'none',
+    overflowX: 'auto',
   },
   divider: {
     width: 1,
@@ -41,6 +48,18 @@ const S = {
     padding: '2px 9px',
     lineHeight: '20px',
     transition: 'background 0.12s, border-color 0.12s, color 0.12s',
+    flexShrink: 0,
+  }),
+  iconBtn: (disabled) => ({
+    background: 'none',
+    border: '1px solid #2a2a3a',
+    borderRadius: 5,
+    color: disabled ? '#333' : '#778',
+    cursor: disabled ? 'default' : 'pointer',
+    fontSize: '0.8rem',
+    padding: '2px 7px',
+    lineHeight: '20px',
+    flexShrink: 0,
   }),
   clearBtn: {
     background: 'none',
@@ -51,6 +70,7 @@ const S = {
     fontSize: '0.8rem',
     padding: '2px 9px',
     lineHeight: '20px',
+    flexShrink: 0,
   },
   speedLabel: {
     fontSize: '0.72rem',
@@ -58,6 +78,7 @@ const S = {
     minWidth: 36,
     textAlign: 'center',
     fontVariantNumeric: 'tabular-nums',
+    flexShrink: 0,
   },
 };
 
@@ -70,13 +91,21 @@ function speedLabel(speeds, idx) {
 export default function Toolbar({
   isPaused, speedIdx, speeds,
   onTogglePause, onSpeedUp, onSlowDown, onClear,
+  onStep, onExport,
+  canUndo, canRedo, onUndo, onRedo,
 }) {
   return (
     <div style={S.root}>
       {/* Brand */}
-      <span style={{ fontSize: '0.72rem', letterSpacing: '0.12em', color: '#667', fontWeight: 600 }}>
+      <span style={{ fontSize: '0.72rem', letterSpacing: '0.12em', color: '#667', fontWeight: 600, flexShrink: 0 }}>
         PIXEL PLANET
       </span>
+
+      <span style={S.divider} />
+
+      {/* Undo / Redo */}
+      <button style={S.iconBtn(!canUndo)} onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩</button>
+      <button style={S.iconBtn(!canRedo)} onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪</button>
 
       <span style={S.divider} />
 
@@ -84,6 +113,9 @@ export default function Toolbar({
       <button style={S.btn(false)} onClick={onTogglePause} title={isPaused ? 'Play (Space)' : 'Pause (Space)'}>
         {isPaused ? '▶ Play' : '⏸ Pause'}
       </button>
+
+      {/* Step */}
+      <button style={S.clearBtn} onClick={onStep} title="Step one tick">⏭ Step</button>
 
       {/* Speed controls */}
       <button
@@ -103,9 +135,10 @@ export default function Toolbar({
       <span style={S.divider} />
 
       {/* Clear */}
-      <button style={S.clearBtn} onClick={onClear} title="Clear canvas">
-        Clear
-      </button>
+      <button style={S.clearBtn} onClick={onClear} title="Clear canvas">Clear</button>
+
+      {/* Export */}
+      <button style={S.clearBtn} onClick={onExport} title="Export canvas as PNG">⬇ PNG</button>
     </div>
   );
 }

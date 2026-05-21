@@ -319,6 +319,7 @@ export default function RuleManager({ selectedType }) {
           {editing && (
             <div style={{ borderTop: '1px solid #2a2a3a', paddingTop: 12, marginTop: 10 }}>
               <RuleEditor
+                key={editingNew ? '__new__' : (selectedRuleId ?? '__none__')}
                 rule={editingNew ? null : selectedRule}
                 onSave={handleSave}
                 onCancel={() => { setEditing(false); setSelectedRuleId(null); }}

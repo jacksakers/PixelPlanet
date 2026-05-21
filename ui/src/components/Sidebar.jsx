@@ -87,7 +87,7 @@ const S = {
   },
 };
 
-export default function Sidebar({ selectedType, isMobile = false, onClose }) {
+export default function Sidebar({ selectedType, onSelectType, isMobile = false, onClose }) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState(TAB_ENTITIES);
 
@@ -131,7 +131,7 @@ export default function Sidebar({ selectedType, isMobile = false, onClose }) {
             <button style={S.tab(tab === TAB_SETTINGS)} onClick={() => setTab(TAB_SETTINGS)}>⚙</button>
           </div>
           <div style={S.content}>
-            {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} />}
+            {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} onSelectType={onSelectType} />}
             {tab === TAB_RULES    && <RuleManager selectedType={selectedType} />}
             {tab === TAB_SETTINGS && <SettingsPanel />}
           </div>
@@ -171,7 +171,7 @@ export default function Sidebar({ selectedType, isMobile = false, onClose }) {
 
       {/* Content */}
       <div style={S.content}>
-        {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} />}
+        {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} onSelectType={onSelectType} />}
         {tab === TAB_RULES    && <RuleManager selectedType={selectedType} />}
         {tab === TAB_SETTINGS && <SettingsPanel />}
       </div>
