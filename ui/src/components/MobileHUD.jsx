@@ -133,6 +133,7 @@ export default function MobileHUD({
   isPaused, onTogglePause,
   onClear,
   onOpenEditor,
+  toolMode = 'paint', onSetToolMode,
 }) {
   const { entities } = useSimContext();
 
@@ -173,23 +174,23 @@ export default function MobileHUD({
           })}
         </div>
 
-        {/* Pause / Play */}
+        {/* Tool mode: paint / fill / eyedropper (icons only) */}
         <button
-          style={S.iconBtn}
-          onClick={onTogglePause}
-          title={isPaused ? 'Play' : 'Pause'}
-        >
-          {isPaused ? '▶' : '⏸'}
-        </button>
+          style={{ ...S.iconBtn, fontSize: '0.95rem', background: toolMode === 'paint' ? '#2d2d44' : 'none', border: toolMode === 'paint' ? '1px solid #5566aa' : '1px solid #3a3a55' }}
+          onClick={() => onSetToolMode?.('paint')}
+          title="Paint"
+        >🖌️</button>
+        <button
+          style={{ ...S.iconBtn, fontSize: '0.95rem', background: toolMode === 'fill' ? '#2d2d44' : 'none', border: toolMode === 'fill' ? '1px solid #5566aa' : '1px solid #3a3a55' }}
+          onClick={() => onSetToolMode?.('fill')}
+          title="Flood fill"
+        >🪣</button>
+        <button
+          style={{ ...S.iconBtn, fontSize: '0.95rem', background: toolMode === 'eyedropper' ? '#2d2d44' : 'none', border: toolMode === 'eyedropper' ? '1px solid #5566aa' : '1px solid #3a3a55' }}
+          onClick={() => onSetToolMode?.('eyedropper')}
+          title="Eyedropper"
+        >🔍</button>
 
-        {/* Clear */}
-        <button
-          style={{ ...S.iconBtn, fontSize: '0.85rem', color: '#778' }}
-          onClick={onClear}
-          title="Clear canvas"
-        >
-          ✕
-        </button>
       </div>
 
       {/* ── Brush size row ───────────────────────────────────────── */}

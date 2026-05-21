@@ -48,7 +48,7 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
   const rafRef          = useRef(null);
   const mouseRef        = useRef({ down: false, x: 0, y: 0 });
   const tickAccRef      = useRef(0); // fractional tick accumulator for sub-1× speeds
-  const tickCountRef    = useRef(0); // total ticks fired
+  const tpsRef          = useRef({ count: 0, lastTime: 0, rate: 0 }); // for TPS display
   const tickSpanRef     = useRef(null); // direct DOM ref for zero-re-render tick display
   const [status, setStatus] = useState('Loading WASM engine…');
 
@@ -119,15 +119,13 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
 
         // Expose a clear-canvas function to App via ref
         if (clearCanvasRef) {
-          clearCanvasRef.current = () => { engineInit(mod, GRID_W, GRID_H); tickCountRef.current = 0; if (tickSpanRef.current) tickSpanRef.current.textContent = 'tick 0'; };
+          clearCanvasRef.current = () => { engineInit(mod, GRID_W, GRID_H); tpsRef.current = { count: 0, lastTime: 0, rate: 0 }; if (tickSpanRef.current) tickSpanRef.current.textContent = '0 tps'; };
         }
 
         // Expose single-step to App via ref
         if (stepCanvasRef) {
           stepCanvasRef.current = () => {
             engineUpdate(mod);
-            tickCountRef.current++;
-            if (tickSpanRef.current) tickSpanRef.current.textContent = `tick ${tickCountRef.current.toLocaleString()}`;
             renderFrame(ctx, mod);
           };
         }
@@ -165,8 +163,17 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
             tickAccRef.current -= ticks;
             for (let t = 0; t < ticks; t++) engineUpdate(mod);
             if (ticks > 0) {
-              tickCountRef.current += ticks;
-              if (tickSpanRef.current) tickSpanRef.current.textContent = `tick ${tickCountRef.current.toLocaleString()}`;
+              const tps = tpsRef.current;
+              tps.count += ticks;
+              const now = performance.now();
+              if (tps.lastTime === 0) tps.lastTime = now;
+              const elapsed = now - tps.lastTime;
+              if (elapsed >= 500) {
+                tps.rate = Math.round(tps.count / (elapsed / 1000));
+                tps.count = 0;
+                tps.lastTime = now;
+                if (tickSpanRef.current) tickSpanRef.current.textContent = `${tps.rate} tps`;
+              }
             }
           }
 
@@ -378,7 +385,8 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
   }, [toGrid, onSelectType]);
 
   // -------------------------------------------------------------------------
-  // Touch handlers — 1 finger draws, 2 fingers pinch-zoom + pan
+  // Touch handlers — attached as non-passive so e.preventDefault() works
+  // 1 finger: draw/fill/eyedropper  |  2 fingers: pinch-zoom + pan
   // -------------------------------------------------------------------------
   const onTouchStart = useCallback((e) => {
     e.preventDefault();
@@ -392,8 +400,23 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
       return;
     }
     pinchRef.current = null;
-    mouseRef.current = { down: true, ...toGrid(e.touches[0]) };
-  }, [toGrid]);
+    const pos = toGrid(e.touches[0]);
+    const toolMode = toolModeRef?.current ?? 'paint';
+    if (toolMode === 'eyedropper') {
+      const mod = modRef.current;
+      if (mod && onSelectType) {
+        const cells = engineGetCells(mod, GRID_W, GRID_H);
+        const type = cells[pos.y * GRID_W + pos.x];
+        onSelectType(type);
+      }
+      return;
+    }
+    if (toolMode === 'fill') {
+      floodFill(pos.x, pos.y, selectedTypeRef.current);
+      return;
+    }
+    mouseRef.current = { down: true, ...pos };
+  }, [toGrid, toolModeRef, onSelectType, floodFill, selectedTypeRef]);
 
   const onTouchMove = useCallback((e) => {
     e.preventDefault();
@@ -422,15 +445,29 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
       setZoomDisplay(Math.round(newZoom * 100) / 100);
       return;
     }
-    if (e.touches.length === 1) {
+    if (e.touches.length === 1 && (toolModeRef?.current ?? 'paint') === 'paint') {
       mouseRef.current = { down: true, ...toGrid(e.touches[0]) };
     }
-  }, [toGrid, applyTransform, clampPan]);
+  }, [toGrid, applyTransform, clampPan, toolModeRef]);
 
   const onTouchEnd = useCallback((e) => {
     if (e.touches.length < 2) pinchRef.current = null;
     if (e.touches.length === 0) mouseRef.current.down = false;
   }, []);
+
+  // Attach touch handlers as non-passive to allow preventDefault()
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    canvas.addEventListener('touchend',   onTouchEnd);
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove',  onTouchMove);
+      canvas.removeEventListener('touchend',   onTouchEnd);
+    };
+  }, [onTouchStart, onTouchMove, onTouchEnd]);
 
   // -------------------------------------------------------------------------
   // Zoom control button styles
@@ -495,12 +532,9 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
         onContextMenu={onContextMenu}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
       />
 
-      {/* ── Tick count HUD ───────────────────────────────────────────── */}
+      {/* ── TPS HUD ──────────────────────────────────────────────────── */}
       <div style={{
         position: 'absolute', top: 8, left: 8,
         pointerEvents: 'none', zIndex: 4,
@@ -508,7 +542,7 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
         <span
           ref={tickSpanRef}
           style={{ fontSize: '0.62rem', color: '#334', fontVariantNumeric: 'tabular-nums' }}
-        >tick 0</span>
+        >0 tps</span>
       </div>
 
       {/* ── Zoom controls overlay ─────────────────────────────────────── */}

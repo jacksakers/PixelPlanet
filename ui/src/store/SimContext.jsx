@@ -183,29 +183,32 @@ function historyReducer(history, action) {
     if (history.past.length === 0) return history;
     const newPresent = history.past[history.past.length - 1];
     return {
-      past:    history.past.slice(0, -1),
-      present: newPresent,
-      future:  [history.present, ...history.future.slice(0, MAX_HISTORY - 1)],
+      past:         history.past.slice(0, -1),
+      present:      newPresent,
+      future:       [history.present, ...history.future.slice(0, MAX_HISTORY - 1)],
+      undoVersion:  (history.undoVersion ?? 0) + 1,
     };
   }
   if (action.type === 'REDO') {
     if (history.future.length === 0) return history;
     const [newPresent, ...newFuture] = history.future;
     return {
-      past:    [...history.past.slice(-(MAX_HISTORY - 1)), history.present],
-      present: newPresent,
-      future:  newFuture,
+      past:         [...history.past.slice(-(MAX_HISTORY - 1)), history.present],
+      present:      newPresent,
+      future:       newFuture,
+      undoVersion:  (history.undoVersion ?? 0) + 1,
     };
   }
   const newPresent = reducer(history.present, action);
   if (newPresent === history.present) return history;
   if (NO_HISTORY.has(action.type)) {
-    return { past: [], present: newPresent, future: [] };
+    return { past: [], present: newPresent, future: [], undoVersion: history.undoVersion ?? 0 };
   }
   return {
-    past:    [...history.past.slice(-(MAX_HISTORY - 1)), history.present],
-    present: newPresent,
-    future:  [],
+    past:         [...history.past.slice(-(MAX_HISTORY - 1)), history.present],
+    present:      newPresent,
+    future:       [],
+    undoVersion:  history.undoVersion ?? 0,
   };
 }
 
@@ -214,14 +217,16 @@ function historyReducer(history, action) {
 // ---------------------------------------------------------------------------
 export function SimProvider({ children }) {
   const [history, dispatch] = useReducer(historyReducer, {
-    past:    [],
-    present: initialState,
-    future:  [],
+    past:        [],
+    present:     initialState,
+    future:      [],
+    undoVersion: 0,
   });
 
-  const state    = history.present;
-  const canUndo  = history.past.length > 0;
-  const canRedo  = history.future.length > 0;
+  const state       = history.present;
+  const canUndo     = history.past.length > 0;
+  const canRedo     = history.future.length > 0;
+  const undoVersion = history.undoVersion ?? 0;
 
   // Auto-save to localStorage whenever config changes.
   useEffect(() => {
@@ -266,8 +271,8 @@ export function SimProvider({ children }) {
   }, [state.entities]);
 
   const value = useMemo(
-    () => ({ ...state, ...actions, colorTable, canUndo, canRedo }),
-    [state, actions, colorTable, canUndo, canRedo],
+    () => ({ ...state, ...actions, colorTable, canUndo, canRedo, undoVersion }),
+    [state, actions, colorTable, canUndo, canRedo, undoVersion],
   );
 
   return <SimContext.Provider value={value}>{children}</SimContext.Provider>;

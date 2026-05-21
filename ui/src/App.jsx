@@ -134,6 +134,8 @@ function AppInner() {
             onTogglePause={handleTogglePause}
             onClear={handleClear}
             onOpenEditor={() => setSidebarOpen(true)}
+            toolMode={toolMode}
+            onSetToolMode={handleSetToolMode}
           />
 
           {/* Sidebar overlay (drawer) */}

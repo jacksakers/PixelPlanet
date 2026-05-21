@@ -229,8 +229,18 @@ export default function PixelPalette({ selectedType, onSelectType, brushSize, on
               color: toolMode === 'fill' ? '#aaccff' : '#556',
             }}
           >🪣 Fill</button>
+          <button
+            title="Eyedropper: right-click canvas or select this tool and click"
+            onClick={() => onSetToolMode?.('eyedropper')}
+            style={{
+              flex: 1, padding: '3px 0', fontSize: '0.72rem', borderRadius: 5, cursor: 'pointer',
+              background: toolMode === 'eyedropper' ? '#2d2d44' : 'transparent',
+              border: toolMode === 'eyedropper' ? '1px solid #5566aa' : '1px solid #2a2a3a',
+              color: toolMode === 'eyedropper' ? '#aaccff' : '#556',
+            }}
+          >🔍 Pick</button>
         </div>
-        <div style={{ fontSize: '0.58rem', color: '#334', marginTop: 4 }}>right-click = eyedropper</div>
+        <div style={{ fontSize: '0.58rem', color: '#334', marginTop: 4 }}>right-click = quick eyedropper</div>
       </div>
     </div>
   );

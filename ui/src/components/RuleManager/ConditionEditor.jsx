@@ -5,7 +5,6 @@
  * Always, NeighborCheck, PropertyCheck, Chance, AND, OR, NOT.
  */
 
-import { useState } from 'react';
 import { useSimContext } from '../../store/SimContext.jsx';
 import {
   CONDITION_TYPES,
@@ -59,6 +58,17 @@ const S = {
     padding: '2px 2px 0 0',
     flexShrink: 0,
     userSelect: 'none',
+  },
+  orderBtn: {
+    background: 'none',
+    border: '1px solid #2a2a3a',
+    borderRadius: 3,
+    color: '#557',
+    cursor: 'pointer',
+    fontSize: '0.65rem',
+    padding: '0 3px',
+    flexShrink: 0,
+    lineHeight: '14px',
   },
   delBtn: {
     padding: '1px 6px',
@@ -136,8 +146,6 @@ const CONDITION_DEFAULTS = {
 };
 
 export default function ConditionEditor({ condition, onChange, onDelete, depth = 0, entityId }) {
-  const [dragIdx, setDragIdx] = useState(null);
-
   function set(partial) { onChange({ ...condition, ...partial }); }
 
   function addChild() {
@@ -279,36 +287,46 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
       {/* Recursive children for AND / OR */}
       {(condition.type === 'AND' || condition.type === 'OR') && (
         <>
-          {(condition.children ?? []).map((child, i) => (
-            <div
-              key={i}
-              draggable
-              onDragStart={(e) => { e.stopPropagation(); setDragIdx(i); }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault(); e.stopPropagation();
-                if (dragIdx !== null && dragIdx !== i) {
-                  const next = [...(condition.children ?? [])];
-                  const [item] = next.splice(dragIdx, 1);
-                  next.splice(i, 0, item);
-                  set({ children: next });
-                }
-                setDragIdx(null);
-              }}
-              style={{ display: 'flex', alignItems: 'flex-start', opacity: dragIdx === i ? 0.4 : 1 }}
-            >
-              <span style={S.dragHandle} title="Drag to reorder">⠿</span>
-              <div style={{ flex: 1 }}>
-                <ConditionEditor
-                  condition={child}
-                  onChange={(c) => updateChild(i, c)}
-                  onDelete={() => removeChild(i)}
-                  depth={depth + 1}
-                  entityId={entityId}
-                />
+          {(condition.children ?? []).map((child, i) => {
+            const total = (condition.children ?? []).length;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0, paddingTop: 3 }}>
+                  <button
+                    style={{ ...S.orderBtn, opacity: i === 0 ? 0.25 : 1 }}
+                    disabled={i === 0}
+                    title="Move up"
+                    onClick={() => {
+                      if (i === 0) return;
+                      const next = [...(condition.children ?? [])];
+                      [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                      set({ children: next });
+                    }}
+                  >▲</button>
+                  <button
+                    style={{ ...S.orderBtn, opacity: i === total - 1 ? 0.25 : 1 }}
+                    disabled={i === total - 1}
+                    title="Move down"
+                    onClick={() => {
+                      if (i === total - 1) return;
+                      const next = [...(condition.children ?? [])];
+                      [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                      set({ children: next });
+                    }}
+                  >▼</button>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <ConditionEditor
+                    condition={child}
+                    onChange={(c) => updateChild(i, c)}
+                    onDelete={() => removeChild(i)}
+                    depth={depth + 1}
+                    entityId={entityId}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <button style={{ ...S.addBtn, alignSelf: 'flex-start', marginLeft: depth * 14 + 4 }} onClick={addChild}>
             + condition
           </button>

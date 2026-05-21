@@ -89,6 +89,7 @@ export default function RuleManager({ selectedType }) {
     updateEntityRule,
     deleteEntityRule,
     reorderEntityRules,
+    undoVersion,
   } = useSimContext();
 
   const [tab, setTab]             = useState(TAB_ENTITY);
@@ -319,7 +320,7 @@ export default function RuleManager({ selectedType }) {
           {editing && (
             <div style={{ borderTop: '1px solid #2a2a3a', paddingTop: 12, marginTop: 10 }}>
               <RuleEditor
-                key={editingNew ? '__new__' : (selectedRuleId ?? '__none__')}
+                key={`${editingNew ? '__new__' : (selectedRuleId ?? '__none__')}_u${undoVersion}`}
                 rule={editingNew ? null : selectedRule}
                 onSave={handleSave}
                 onCancel={() => { setEditing(false); setSelectedRuleId(null); }}
