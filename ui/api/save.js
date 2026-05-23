@@ -33,6 +33,12 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Guard: catch missing env vars early with a clear message.
+  if (!process.env.SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error('[api/save] Missing env vars: SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    return res.status(500).json({ error: 'Server misconfiguration: Supabase env vars not set' });
+  }
+
   // Parse body — Vercel provides it already parsed for JSON content-type.
   let pack_data;
   try {
