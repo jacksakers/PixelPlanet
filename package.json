@@ -1,0 +1,10 @@
+{
+  "name": "pixelplanet",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Root package for PixelPlanet Vercel serverless functions (api/).",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}

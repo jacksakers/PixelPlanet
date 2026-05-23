@@ -28,9 +28,36 @@ function AppInner() {
   const selectedTypeRef = useRef(PIXEL_SAND);
   const [brushSize, setBrushSize] = useState(3);
   const brushSizeRef = useRef(3);
-  const { entities, undo, redo, canUndo, canRedo } = useSimContext();
+  const { entities, undo, redo, canUndo, canRedo, importConfig } = useSimContext();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ── URL deep-link: ?pack=X-XXXX → auto-load pack on first render ──────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const packCode = params.get('pack');
+    if (!packCode) return;
+
+    fetch(`/api/load?code=${encodeURIComponent(packCode.trim().toUpperCase())}`)
+      .then((res) => {
+        if (!res.ok) return res.json().then((j) => { throw new Error(j.error ?? 'Not found'); });
+        return res.json();
+      })
+      .then((data) => {
+        importConfig({
+          entities:    data.entities    ?? [],
+          globalRules: data.globalRules ?? [],
+          entityRules: data.entityRules ?? {},
+        });
+        // Remove the ?pack= param from the URL without reloading the page
+        const url = new URL(window.location.href);
+        url.searchParams.delete('pack');
+        window.history.replaceState(null, '', url.toString());
+      })
+      .catch((err) => {
+        console.warn(`[PixelPlanet] Could not load pack "${packCode}":`, err.message);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tool mode: 'paint' | 'fill'
   const [toolMode, setToolMode]   = useState('paint');

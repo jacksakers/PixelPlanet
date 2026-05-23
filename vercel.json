@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    }
+  ],
+  "buildCommand": "cd ui && npm run build",
+  "outputDirectory": "ui/dist",
+  "installCommand": "cd ui && npm install"
+}
