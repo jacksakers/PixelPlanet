@@ -28,7 +28,7 @@ function AppInner() {
   const selectedTypeRef = useRef(PIXEL_SAND);
   const [brushSize, setBrushSize] = useState(3);
   const brushSizeRef = useRef(3);
-  const { entities, undo, redo, canUndo, canRedo } = useSimContext();
+  const { entities, undo, redo, canUndo, canRedo, importConfig } = useSimContext();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -87,6 +87,41 @@ function AppInner() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [entities, handleSelectType, undo, redo]);
+
+  // Deep-link: ?pack=X-XXXX — auto-load a shared pack on page load.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get('pack');
+    if (!code) return;
+
+    let cancelled = false;
+    fetch(`/api/load?code=${encodeURIComponent(code)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Pack "${code}" not found (${res.status})`);
+        return res.json();
+      })
+      .then((json) => {
+        if (cancelled) return;
+        if (!json || !Array.isArray(json.entities)) {
+          console.warn('[PixelPlanet] Deep-link pack has unexpected format, ignoring.');
+          return;
+        }
+        importConfig({
+          entities:    json.entities,
+          globalRules: json.globalRules ?? [],
+          entityRules: json.entityRules ?? {},
+        });
+        // Clean the pack param from the URL so refreshing doesn't re-load.
+        const url = new URL(window.location.href);
+        url.searchParams.delete('pack');
+        window.history.replaceState(null, '', url.toString());
+      })
+      .catch((err) => {
+        if (!cancelled) console.warn('[PixelPlanet] Deep-link load failed:', err.message);
+      });
+
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '90vh', background: '#0d0d16' }}>

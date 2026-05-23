@@ -12,6 +12,7 @@
 import { useState, useRef } from 'react';
 import { useSimContext } from '../store/SimContext.jsx';
 import PackManager from './PackManager.jsx';
+import ShareManager from './ShareManager.jsx';
 import {
   exportBundle,
   importBundle,
@@ -133,6 +134,9 @@ export default function SettingsPanel() {
 
       {/* ── Packs ── */}
       <PackManager />
+
+      {/* ── Cloud sharing ── */}
+      <ShareManager />
 
       {/* ── Export ── */}
       <div style={S.section}>

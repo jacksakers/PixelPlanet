@@ -16,5 +16,14 @@ export default defineConfig({
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
+    // Proxy /api/* to the Vercel dev server so serverless functions work
+    // during local development. Run `vercel dev` (port 3000) alongside
+    // `npm run dev` (port 5173) to use this.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
   },
 });
