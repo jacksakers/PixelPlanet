@@ -1,6 +1,6 @@
 # PixelPlanet — Entity & Rule Schema Reference
 
-> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-26 16:21 UTC.
+> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-26 17:52 UTC.
 > Re-run to pick up new condition types, actions, or triggers added to the codebase.
 
 ## Source file status
@@ -51,7 +51,6 @@ is entirely doable by composing the primitives below.
   "id": "number (1–254, unique)",
   "name": "string",
   "color": "[R, G, B, A]  // 0–255 each",
-  "density": "number  // >0 = participates in gravity; 0 = floats/is static",
   "isStatic": "boolean  // true = never evaluated, immovable (e.g. Stone)",
   "lifespan": "number (0–65535)  // 0 = immortal; >0 = cell auto-dies after this many ticks",
   "variables": [
@@ -68,8 +67,7 @@ is entirely doable by composing the primitives below.
 - Entity IDs are integers 1–254. ID 0 is reserved for EMPTY.
 - `isStatic: true` entities are never touched by the rule evaluator at all —
   rules assigned to them are still stored but never run.
-- `density` only matters if a global gravity rule checks `PropertyCheck density > 0`.
-  New entities automatically fall if you keep the default global gravity rule.
+
 
 ---
 
@@ -96,12 +94,14 @@ is entirely doable by composing the primitives below.
 
 Available values for the `trigger` field:
 
-| Trigger | Description |
-|---------|-------------|
-| `OnTick` | Fires every simulation tick (~60 times/second). Use for continuous physics. |
-| `OnRandomTick` | Fires on a random interval. Use for slow, stochastic changes (decay, spreading fire). Add `"interval": <ticks>` to set average cadence. |
-| `OnClick` | Fires once when the user clicks or taps the cell while the **Navigate** tool mode is active (toolMode = `none`). Add `"button"` field to specify a key for button-press rules. Useful for interactive entities: buttons, doors, collectibles. |
-| `OnButtonPress` | Fires every tick while a specified direction key is held. Add `"button": "up"|"down"|"left"|"right"` to the rule. Arrow keys on desktop; on-screen D-pad on mobile (auto-shown when any rule uses this trigger). Use to build player-controlled entities. |
+| Trigger | Extra rule fields | Description |
+|---------|-------------------|-------------|
+| `OnTick` | — | Fires every simulation tick (~60 times/second). Use for continuous physics. |
+| `OnRandomTick` | `interval` *(optional, avg ticks)* | Fires on a random interval. Use for slow, stochastic changes (decay, spreading fire). |
+| `OnClick` | — | Fires once when the user clicks or taps the cell while the **Navigate** tool mode is active. Useful for interactive entities: buttons, doors, collectibles. |
+| `OnButtonPress` | `button`: `"up"`|`"down"`|`"left"`|`"right"` | Fires every tick while a specified direction key is held. Arrow keys on desktop; on-screen D-pad on mobile (auto-shown when any rule uses this trigger). Use to build player-controlled entities. |
+| `OnTimer` | `interval` *(ticks, default 60)* | Fires every exactly N simulation ticks based on a global counter (`g_tick % interval == 0`). Unlike `OnRandomTick` this fires on a precise, deterministic schedule. |
+| `OnEvent` | `eventName` *(string)* | Fires when a `BroadcastEvent` action emitted the matching event name during the **previous** tick. Use to build pub/sub communication between entity types. |
 
 ---
 
@@ -139,23 +139,6 @@ Checks whether the cell in the given direction is a specific entity type.
 
 ---
 
-### `PropertyCheck` *(C++ enum: `COND_PROPERTY`)*
-
-Checks a built-in numeric property of the entity that owns this cell.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `prop` | `string` | One of the built-in properties: density. |
-| `op` | `Op` | Comparison operator: < <= == != > >=. |
-| `val` | `number` | Value to compare against. |
-
-**Example:**
-```json
-{ "type": "PropertyCheck", "prop": "density", "op": ">", "val": 0 }
-```
-
----
-
 ### `VariableCheck` *(C++ enum: `COND_VARIABLE`)*
 
 Checks a named per-cell variable (defined on the entity). Variables are integers 0–65535.
@@ -186,6 +169,22 @@ Counts how many of the 8 surrounding cells match a target type and compares that
 **Example:**
 ```json
 { "type": "NeighborCount", "target": "Algae", "op": ">=", "val": 3 }
+```
+
+---
+
+### `InRange`
+
+Checks whether any cell of the given entity type exists within a Chebyshev (square) radius around this cell.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `target` | `"EMPTY"|"ANY"|name|id` | **Prefer entity name string** (e.g. `"Water"`). Also accepts `"EMPTY"`, `"ANY"`, or a numeric ID (legacy). Name lookup is case-insensitive. |
+| `radius` | `number (1–32)` | Chebyshev (square) radius to scan. Default 5. A radius of 1 checks the 8 immediately adjacent cells. |
+
+**Example:**
+```json
+{ "type": "InRange", "target": "Predator", "radius": 8 }
 ```
 
 ---
@@ -456,6 +455,53 @@ Same scanning logic as MoveToward but moves one step **away** from the nearest m
 
 ---
 
+### `SetColor`
+
+Changes the display colour of every cell of this entity type on the canvas until the canvas is cleared or the config is reloaded. This is a **transient visual effect only** — it does not modify the entity definition, so the palette and editor always show the original colour. Clearing the canvas restores all original colours.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `r` | `number (0–255)` | Red channel. |
+| `g` | `number (0–255)` | Green channel. |
+| `b` | `number (0–255)` | Blue channel. |
+
+**Example:**
+```json
+{ "type": "SetColor", "r": 255, "g": 50, "b": 50 }
+```
+
+---
+
+### `Teleport` *(C++ enum: `ACTION_TELEPORT`)*
+
+Moves this cell to a random empty cell on the grid, or to a random empty cell adjacent to the nearest instance of the target entity type. The source cell is set to EMPTY.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `target` | `"EMPTY"|name|id` | `"EMPTY"` (default) = teleport to any random empty cell. An entity name (e.g. `"Water"`) = teleport to a random empty cell adjacent to the nearest instance of that type. |
+
+**Example:**
+```json
+{ "type": "Teleport", "target": "EMPTY" }
+```
+
+---
+
+### `BroadcastEvent`
+
+Emits a named event that other entities can listen for with an `OnEvent` trigger. Events are buffered during the current tick and become visible to `OnEvent` rules on the **next** tick, preventing ordering ambiguity.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `eventName` | `string` | Arbitrary event identifier (e.g. `"explosion"`, `"alarm"`). Must match the `eventName` field on any `OnEvent` trigger that should respond. |
+
+**Example:**
+```json
+{ "type": "BroadcastEvent", "eventName": "alarm" }
+```
+
+---
+
 ### `AddScore`
 
 Adds `val` to the global score counter. Only has effect while the game is active (after `StartGame` and before `EndGame`). Use this in rules that fire when the player achieves something — collecting an item, eating an enemy, etc.
@@ -563,13 +609,14 @@ or `parser.cpp` alongside this document.
 ### ConditionType
 - `COND_ALWAYS` — Always true
 - `COND_NEIGHBOR` — Check neighbouring cell type
-- `COND_PROPERTY` — Check entity built-in property (density)
+- `COND_PROPERTY` — (removed — kept for backwards-compat parse, evaluates false)
 - `COND_CHANCE` — Random probability gate
 - `COND_AND` — All children must pass
 - `COND_OR` — Any child must pass
 - `COND_NOT` — Invert single child
-- `COND_VARIABLE` — Check per-cell variable (Phase 3)
-- `COND_NEIGHBOR_COUNT` — Count matching neighbours (Phase 3)
+- `COND_VARIABLE` — Check per-cell variable
+- `COND_NEIGHBOR_COUNT` — Count matching neighbours
+- `COND_IN_RANGE` — Is there an entity of type X within radius N?
 
 ### ActionType
 - `ACTION_MOVE` — Move to one direction if EMPTY
@@ -588,6 +635,9 @@ or `parser.cpp` alongside this document.
 - `ACTION_SET_SCORE` — Set the global score counter to a fixed value
 - `ACTION_START_GAME` — Reset score to 0 and mark game as active
 - `ACTION_END_GAME` — Mark game as ended (triggers end-screen in UI)
+- `ACTION_SET_COLOR` — Change this entity type's color in the registry
+- `ACTION_TELEPORT` — Instantly move to a random empty cell or near a target type
+- `ACTION_BROADCAST_EVENT` — Emit a named event; cells with OnEvent react next tick
 
 ---
 
@@ -609,7 +659,6 @@ This is a ready-to-import bundle. It defines:
         10,
         255
       ],
-      "density": 2.5,
       "isStatic": false,
       "variables": [
         {
@@ -627,7 +676,6 @@ This is a ready-to-import bundle. It defines:
         50,
         200
       ],
-      "density": 0,
       "isStatic": false,
       "variables": [
         {

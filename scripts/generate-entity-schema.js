@@ -69,15 +69,16 @@ const typesHpp   = tryRead('engine/src/core/types.hpp');
 const evaluatorCpp = tryRead('engine/src/logic/evaluator.cpp');
 const parserCpp    = tryRead('engine/src/logic/parser.cpp');
 
-// ─── fallback constants (kept up to date at Phase 3) ─────────────────────────
+// ─── fallback constants (kept up to date at Phase 3+) ────────────────────────
 const FALLBACK = {
   CONDITION_TYPES: [
-    'Always', 'NeighborCheck', 'PropertyCheck', 'VariableCheck',
-    'NeighborCount', 'Chance', 'AND', 'OR', 'NOT',
+    'Always', 'NeighborCheck', 'VariableCheck',
+    'NeighborCount', 'InRange', 'Chance', 'AND', 'OR', 'NOT',
   ],
   ACTION_TYPES: [
     'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
     'Eat', 'EatFirst', 'Swap', 'SwapFirst', 'MoveToward', 'MoveAway',
+    'SetColor', 'Teleport', 'BroadcastEvent',
     'AddScore', 'SetScore', 'StartGame', 'EndGame',
   ],
   DIRECTIONS: [
@@ -85,9 +86,8 @@ const FALLBACK = {
     'up-left', 'up-right', 'down-left', 'down-right',
     'any',
   ],
-  TRIGGERS: ['OnTick', 'OnRandomTick', 'OnClick', 'OnButtonPress'],
+  TRIGGERS: ['OnTick', 'OnRandomTick', 'OnClick', 'OnButtonPress', 'OnTimer', 'OnEvent'],
   PROPERTY_OPS: ['<', '<=', '==', '!=', '>', '>='],
-  BUILT_IN_PROPS: ['density'],
   MODIFY_OPS: [
     { value: '+=',  label: 'Add' },
     { value: '-=',  label: 'Subtract' },
@@ -102,7 +102,6 @@ const ACTION_TYPES    = extractJsArray(defaultsJs, 'ACTION_TYPES')    ?? FALLBAC
 const DIRECTIONS      = extractJsArray(defaultsJs, 'DIRECTIONS')      ?? FALLBACK.DIRECTIONS;
 const TRIGGERS        = extractJsArray(defaultsJs, 'TRIGGERS')        ?? FALLBACK.TRIGGERS;
 const PROPERTY_OPS    = extractJsArray(defaultsJs, 'PROPERTY_OPS')    ?? FALLBACK.PROPERTY_OPS;
-const BUILT_IN_PROPS  = extractJsArray(defaultsJs, 'BUILT_IN_PROPS')  ?? FALLBACK.BUILT_IN_PROPS;
 const MODIFY_OPS      = extractModifyOps(defaultsJs)                  ?? FALLBACK.MODIFY_OPS;
 
 // C++ enum names for cross-referencing
@@ -128,6 +127,14 @@ const CONDITION_DETAIL = {
     fields: [],
     example: `{ "type": "Always" }`,
   },
+  InRange: {
+    desc: 'Checks whether any cell of the given entity type exists within a Chebyshev (square) radius around this cell.',
+    fields: [
+      { name: 'target', type: '"EMPTY"|"ANY"|name|id', desc: '**Prefer entity name string** (e.g. `"Water"`). Also accepts `"EMPTY"`, `"ANY"`, or a numeric ID (legacy). Name lookup is case-insensitive.' },
+      { name: 'radius', type: 'number (1–32)',         desc: 'Chebyshev (square) radius to scan. Default 5. A radius of 1 checks the 8 immediately adjacent cells.' },
+    ],
+    example: `{ "type": "InRange", "target": "Predator", "radius": 8 }`,
+  },
   NeighborCheck: {
     desc: 'Checks whether the cell in the given direction is a specific entity type.',
     fields: [
@@ -135,15 +142,6 @@ const CONDITION_DETAIL = {
       { name: 'target', type: '"EMPTY"|"ANY"|name|id', desc: '**Prefer entity name strings** (e.g. `"Water"`). Also accepts `"EMPTY"`, `"ANY"`, or a numeric ID (legacy). Name lookup is case-insensitive.' },
     ],
     example: `{ "type": "NeighborCheck", "dir": "down", "target": "Water" }`,
-  },
-  PropertyCheck: {
-    desc: 'Checks a built-in numeric property of the entity that owns this cell.',
-    fields: [
-      { name: 'prop', type: 'string', desc: `One of the built-in properties: ${BUILT_IN_PROPS.join(', ')}.` },
-      { name: 'op',   type: 'Op',    desc: `Comparison operator: ${PROPERTY_OPS.join(' ')}.` },
-      { name: 'val',  type: 'number',desc: 'Value to compare against.' },
-    ],
-    example: `{ "type": "PropertyCheck", "prop": "density", "op": ">", "val": 0 }`,
   },
   VariableCheck: {
     desc: 'Checks a named per-cell variable (defined on the entity). Variables are integers 0–65535.',
@@ -194,6 +192,29 @@ const CONDITION_DETAIL = {
 };
 
 const ACTION_DETAIL = {
+  SetColor: {
+    desc: 'Changes the display colour of every cell of this entity type on the canvas until the canvas is cleared or the config is reloaded. This is a **transient visual effect only** — it does not modify the entity definition, so the palette and editor always show the original colour. Clearing the canvas restores all original colours.',
+    fields: [
+      { name: 'r', type: 'number (0–255)', desc: 'Red channel.' },
+      { name: 'g', type: 'number (0–255)', desc: 'Green channel.' },
+      { name: 'b', type: 'number (0–255)', desc: 'Blue channel.' },
+    ],
+    example: `{ "type": "SetColor", "r": 255, "g": 50, "b": 50 }`,
+  },
+  Teleport: {
+    desc: 'Moves this cell to a random empty cell on the grid, or to a random empty cell adjacent to the nearest instance of the target entity type. The source cell is set to EMPTY.',
+    fields: [
+      { name: 'target', type: '"EMPTY"|name|id', desc: '`"EMPTY"` (default) = teleport to any random empty cell. An entity name (e.g. `"Water"`) = teleport to a random empty cell adjacent to the nearest instance of that type.' },
+    ],
+    example: `{ "type": "Teleport", "target": "EMPTY" }`,
+  },
+  BroadcastEvent: {
+    desc: 'Emits a named event that other entities can listen for with an `OnEvent` trigger. Events are buffered during the current tick and become visible to `OnEvent` rules on the **next** tick, preventing ordering ambiguity.',
+    fields: [
+      { name: 'eventName', type: 'string', desc: 'Arbitrary event identifier (e.g. `"explosion"`, `"alarm"`). Must match the `eventName` field on any `OnEvent` trigger that should respond.' },
+    ],
+    example: `{ "type": "BroadcastEvent", "eventName": "alarm" }`,
+  },
   Move: {
     desc: 'Moves the cell one step in a single direction if the target cell is empty. Fails silently if blocked. Use `"dir": "any"` to try all 8 directions in random order (equivalent to MoveFirst with all 8 dirs).',
     fields: [
@@ -395,7 +416,6 @@ const ORGANISM_EXAMPLE = {
       id: 10,
       name: 'Lava',
       color: [255, 80, 10, 255],
-      density: 2.5,
       isStatic: false,
       variables: [
         { name: 'heat', defaultVal: 200 },
@@ -405,7 +425,6 @@ const ORGANISM_EXAMPLE = {
       id: 11,
       name: 'Spark',
       color: [255, 220, 50, 200],
-      density: 0,
       isStatic: false,
       variables: [
         { name: 'lifetime', defaultVal: 30 },
@@ -507,7 +526,6 @@ ${codeBlock('json', JSON.stringify({
   id: 'number (1–254, unique)',
   name: 'string',
   color: '[R, G, B, A]  // 0–255 each',
-  density: 'number  // >0 = participates in gravity; 0 = floats/is static',
   isStatic: 'boolean  // true = never evaluated, immovable (e.g. Stone)',
   lifespan: 'number (0–65535)  // 0 = immortal; >0 = cell auto-dies after this many ticks',
   variables: [
@@ -523,8 +541,7 @@ ${codeBlock('json', JSON.stringify({
 - Entity IDs are integers 1–254. ID 0 is reserved for EMPTY.
 - \`isStatic: true\` entities are never touched by the rule evaluator at all —
   rules assigned to them are still stored but never run.
-- \`density\` only matters if a global gravity rule checks \`PropertyCheck density > 0\`.
-  New entities automatically fall if you keep the default global gravity rule.
+
 
 ---
 
@@ -549,16 +566,18 @@ ${codeBlock('json', JSON.stringify({
 
 Available values for the \`trigger\` field:
 
-| Trigger | Description |
-|---------|-------------|
+| Trigger | Extra rule fields | Description |
+|---------|-------------------|-------------|
 ${TRIGGERS.map(t => {
-  const desc = {
-    OnTick: 'Fires every simulation tick (~60 times/second). Use for continuous physics.',
-    OnRandomTick: 'Fires on a random interval. Use for slow, stochastic changes (decay, spreading fire). Add `"interval": <ticks>` to set average cadence.',
-    OnClick: 'Fires once when the user clicks or taps the cell while the **Navigate** tool mode is active (toolMode = `none`). Add `"button"` field to specify a key for button-press rules. Useful for interactive entities: buttons, doors, collectibles.',
-    OnButtonPress: 'Fires every tick while a specified direction key is held. Add `"button": "up"|"down"|"left"|"right"` to the rule. Arrow keys on desktop; on-screen D-pad on mobile (auto-shown when any rule uses this trigger). Use to build player-controlled entities.',
-  }[t] ?? '_No description yet._';
-  return `| \`${t}\` | ${desc} |`;
+  const row = {
+    OnTick:         { extra: '—',                                    desc: 'Fires every simulation tick (~60 times/second). Use for continuous physics.' },
+    OnRandomTick:   { extra: '`interval` *(optional, avg ticks)*',   desc: 'Fires on a random interval. Use for slow, stochastic changes (decay, spreading fire).' },
+    OnClick:        { extra: '—',                                    desc: 'Fires once when the user clicks or taps the cell while the **Navigate** tool mode is active. Useful for interactive entities: buttons, doors, collectibles.' },
+    OnButtonPress:  { extra: '`button`: `"up"`\|`"down"`\|`"left"`\|`"right"`', desc: 'Fires every tick while a specified direction key is held. Arrow keys on desktop; on-screen D-pad on mobile (auto-shown when any rule uses this trigger). Use to build player-controlled entities.' },
+    OnTimer:        { extra: '`interval` *(ticks, default 60)*',     desc: 'Fires every exactly N simulation ticks based on a global counter (`g_tick % interval == 0`). Unlike `OnRandomTick` this fires on a precise, deterministic schedule.' },
+    OnEvent:        { extra: '`eventName` *(string)*',               desc: 'Fires when a `BroadcastEvent` action emitted the matching event name during the **previous** tick. Use to build pub/sub communication between entity types.' },
+  }[t] ?? { extra: '—', desc: '_No description yet._' };
+  return `| \`${t}\` | ${row.extra} | ${row.desc} |`;
 }).join('\n')}
 
 ---
