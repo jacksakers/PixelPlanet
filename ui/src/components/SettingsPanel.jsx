@@ -185,6 +185,15 @@ export default function SettingsPanel() {
         )}
       </div>
 
+      {/* Link to GitHub repo */}
+      <div style={S.section}>
+        <span style={S.title}>GitHub</span>
+        <a href="https://github.com/jacksakers/PixelPlanet/blob/main/ENTITY_SCHEMA.md" 
+            target="_blank" rel="noopener noreferrer"
+            style={{ color: '#55aaff', fontSize: '0.8rem' }}
+            >Entity Schema</a>
+      </div>
+
       {/* ── Danger zone ── */}
       <div style={S.section}>
         <span style={S.title}>Danger Zone</span>
