@@ -93,6 +93,9 @@ const ACTION_DEFAULTS = {
   SetScore:       { type: 'SetScore', val: 0 },
   StartGame:      { type: 'StartGame' },
   EndGame:        { type: 'EndGame' },
+  SetColor:       { type: 'SetColor', r: 255, g: 100, b: 50 },
+  Teleport:       { type: 'Teleport', target: 'EMPTY' },
+  BroadcastEvent: { type: 'BroadcastEvent', eventName: 'my_event' },
 };
 
 export default function ActionEditor({ action, onChange, onDelete, entityId }) {
@@ -345,6 +348,71 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
       {/* EndGame — no extra params */}
       {action.type === 'EndGame' && (
         <span style={{ fontSize: '0.72rem', color: '#a68', fontStyle: 'italic' }}>ends game &amp; shows final score</span>
+      )}
+
+      {/* SetColor — change entity type color */}
+      {action.type === 'SetColor' && (() => {
+        const r = action.r ?? 255, g = action.g ?? 255, b = action.b ?? 255;
+        const hex = `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+        return (
+          <>
+            {/* Clickable swatch opens native colour picker */}
+            <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', flexShrink: 0, position: 'relative' }} title="Click to pick colour">
+              <span style={{
+                display: 'inline-block', width: 22, height: 22, borderRadius: 4,
+                background: hex, border: '2px solid #666',
+              }} />
+              <input
+                type="color"
+                value={hex}
+                style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                onChange={(e) => {
+                  const c = e.target.value;
+                  set({
+                    r: parseInt(c.slice(1, 3), 16),
+                    g: parseInt(c.slice(3, 5), 16),
+                    b: parseInt(c.slice(5, 7), 16),
+                  });
+                }}
+              />
+            </label>
+            <span style={{ fontSize: '0.74rem', color: '#888' }}>R</span>
+            <input style={{ ...S.sel, width: 52 }} type="number" min={0} max={255} step={1}
+              value={r} onChange={(e) => set({ r: Math.min(255, Math.max(0, parseInt(e.target.value) || 0)) })} />
+            <span style={{ fontSize: '0.74rem', color: '#888' }}>G</span>
+            <input style={{ ...S.sel, width: 52 }} type="number" min={0} max={255} step={1}
+              value={g} onChange={(e) => set({ g: Math.min(255, Math.max(0, parseInt(e.target.value) || 0)) })} />
+            <span style={{ fontSize: '0.74rem', color: '#888' }}>B</span>
+            <input style={{ ...S.sel, width: 52 }} type="number" min={0} max={255} step={1}
+              value={b} onChange={(e) => set({ b: Math.min(255, Math.max(0, parseInt(e.target.value) || 0)) })} />
+          </>
+        );
+      })()}
+
+      {/* Teleport — random empty cell or near a target type */}
+      {action.type === 'Teleport' && (
+        <>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>to</span>
+          <select style={S.sel} value={String(action.target ?? 'EMPTY')}
+            onChange={(e) => set({ target: e.target.value })}>
+            <option value="EMPTY">random empty</option>
+            {entities.map((e) => <option key={e.id} value={e.name}>near {e.name}</option>)}
+          </select>
+        </>
+      )}
+
+      {/* BroadcastEvent — emit a named event */}
+      {action.type === 'BroadcastEvent' && (
+        <>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>event</span>
+          <input
+            style={{ ...S.sel, width: 120 }}
+            type="text"
+            placeholder="event name"
+            value={action.eventName ?? ''}
+            onChange={(e) => set({ eventName: e.target.value })}
+          />
+        </>
       )}
 
       <button style={S.delBtn} onClick={onDelete}>✕</button>

@@ -98,6 +98,9 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
     id:        rule?.id        ?? newRuleId(),
     title:     rule?.title     ?? '',
     trigger:   rule?.trigger   ?? 'OnTick',
+    button:    rule?.button    ?? 'up',
+    interval:  rule?.interval  ?? 60,
+    eventName: rule?.eventName ?? '',
     condition: rule?.condition ?? { type: 'Always' },
     actions:   rule?.actions   ?? [],
   }));
@@ -119,6 +122,9 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
         id:        rule.id        ?? newRuleId(),
         title:     rule.title     ?? '',
         trigger:   rule.trigger   ?? 'OnTick',
+        button:    rule.button    ?? 'up',
+        interval:  rule.interval  ?? 60,
+        eventName: rule.eventName ?? '',
         condition: rule.condition ?? { type: 'Always' },
         actions:   rule.actions   ?? [],
       };
@@ -237,6 +243,34 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
                 >
                   {BUTTON_KEYS.map((k) => <option key={k}>{k}</option>)}
                 </select>
+              </label>
+            )}
+            {/* Interval picker — only for OnTimer */}
+            {draft.trigger === 'OnTimer' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: '#777', marginTop: 4 }}>
+                Every
+                <input
+                  style={{ ...S.sel, width: 72 }}
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={draft.interval ?? 60}
+                  onChange={(e) => setDraft((d) => ({ ...d, interval: Math.max(1, parseInt(e.target.value) || 1) }))}
+                />
+                ticks
+              </label>
+            )}
+            {/* Event name — only for OnEvent */}
+            {draft.trigger === 'OnEvent' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: '#777', marginTop: 4 }}>
+                Event
+                <input
+                  style={{ ...S.sel, width: 140 }}
+                  type="text"
+                  placeholder="event name"
+                  value={draft.eventName ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, eventName: e.target.value }))}
+                />
               </label>
             )}
             {/* Info text for OnClick */}

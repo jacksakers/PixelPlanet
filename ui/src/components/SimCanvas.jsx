@@ -60,9 +60,14 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
   // Mirror of the last color table sent to the render loop
   const colorTableRef  = useRef(colorTable);
 
+  // Always-current config ref so the clear function can reload the engine
+  // (which resets any transient SetColor overrides) without stale closure issues.
+  const configRef = useRef(null);
+
   // Keep colorTableRef in sync so the RAF loop always reads the latest colours
   // without needing to be recreated.
   colorTableRef.current = colorTable;
+  configRef.current = buildEngineConfig(entities, globalRules, entityRules);
 
   // -------------------------------------------------------------------------
   // Sync config → engine whenever entities or rules change
@@ -83,7 +88,10 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
 
     const cells  = engineGetCells(mod, GRID_W, GRID_H);
     const buf    = imgData.data;
-    const colors = colorTableRef.current;
+    // Always read from the engine's live color table so SetColor actions
+    // are reflected immediately without needing a React state update.
+    const colorPtr = mod._engine_get_color_table();
+    const colors   = new Uint8Array(mod.HEAPU8.buffer, colorPtr, 256 * 4);
 
     for (let i = 0; i < GRID_W * GRID_H; i++) {
       const ci = (cells[i] < 256 ? cells[i] : 0) * 4;
@@ -120,7 +128,14 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
 
         // Expose a clear-canvas function to App via ref
         if (clearCanvasRef) {
-          clearCanvasRef.current = () => { engineInit(mod, GRID_W, GRID_H); tpsRef.current = { count: 0, lastTime: 0, rate: 0 }; if (tickSpanRef.current) tickSpanRef.current.textContent = '0 tps'; };
+          clearCanvasRef.current = () => {
+            engineInit(mod, GRID_W, GRID_H);
+            // Reload config so transient SetColor overrides are cleared and
+            // entity colors reset to their JS-defined values.
+            if (configRef.current) engineLoadConfig(mod, configRef.current);
+            tpsRef.current = { count: 0, lastTime: 0, rate: 0 };
+            if (tickSpanRef.current) tickSpanRef.current.textContent = '0 tps';
+          };
         }
 
         // Expose single-step to App via ref

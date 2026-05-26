@@ -37,6 +37,7 @@
 
 #include "parser.hpp"
 #include "rule.hpp"
+#include "evaluator.hpp"
 #include "../core/entity.hpp"
 #include "../core/grid.hpp"
 #include "../core/types.hpp"
@@ -129,10 +130,8 @@ static Condition parseCondition(const nlohmann::json& j) {
             c.neighborTarget = resolveTarget(j["target"]);
     }
     else if (type == "PropertyCheck") {
-        c.type    = COND_PROPERTY;
-        c.propName = j.value("prop", "density");
-        c.propOp   = j.value("op",  ">");
-        c.propVal  = j.value("val", 0.0f);
+        // Removed — kept as a no-op (Always true) for backwards-compat with old saves.
+        c.type = COND_ALWAYS;
     }
     else if (type == "Chance") {
         c.type   = COND_CHANCE;
@@ -169,6 +168,12 @@ static Condition parseCondition(const nlohmann::json& j) {
             c.countTarget = resolveTarget(j["target"]);
         c.countOp  = j.value("op",  ">=");
         c.countVal = j.value("val", 1);
+    }
+    else if (type == "InRange") {
+        c.type = COND_IN_RANGE;
+        if (j.contains("target"))
+            c.inRangeTarget = resolveTarget(j["target"]);
+        c.inRangeRadius = j.value("radius", 5);
     }
 
     return c;
@@ -269,6 +274,22 @@ static Action parseAction(const nlohmann::json& j) {
     else if (type == "EndGame") {
         a.type = ACTION_END_GAME;
     }
+    else if (type == "SetColor") {
+        a.type      = ACTION_SET_COLOR;
+        a.setColorR = static_cast<uint8_t>(j.value("r", 255));
+        a.setColorG = static_cast<uint8_t>(j.value("g", 255));
+        a.setColorB = static_cast<uint8_t>(j.value("b", 255));
+    }
+    else if (type == "Teleport") {
+        a.type = ACTION_TELEPORT;
+        if (j.contains("target")) {
+            a.teleportTarget = resolveTarget(j["target"]);
+        }
+    }
+    else if (type == "BroadcastEvent") {
+        a.type               = ACTION_BROADCAST_EVENT;
+        a.broadcastEventName = j.value("eventName", "");
+    }
 
     return a;
 }
@@ -293,6 +314,12 @@ static Rule parseRule(const nlohmann::json& j) {
         else if (key == "down")  r.buttonKey = BUTTON_DOWN;
         else if (key == "left")  r.buttonKey = BUTTON_LEFT;
         else if (key == "right") r.buttonKey = BUTTON_RIGHT;
+    } else if (trig == "OnTimer") {
+        r.trigger       = TRIGGER_ON_TIMER;
+        r.timerInterval = j.value("interval", 60);
+    } else if (trig == "OnEvent") {
+        r.trigger   = TRIGGER_ON_EVENT;
+        r.eventName = j.value("eventName", "");
     }
 
     r.condition = j.contains("condition")
@@ -319,12 +346,13 @@ bool parseConfig(const char* jsonStr) {
 
         // ---- Entities ----
         g_entityRegistry.clear();
+        clearColorOverrides();  // reset any transient SetColor overrides
         if (doc.contains("entities")) {
             for (const auto& e : doc["entities"]) {
                 EntityDef def;
                 def.id       = e.value("id",       0);
                 def.name     = e.value("name",     "");
-                def.density  = e.value("density",  1.0f);
+                // density field removed — silently ignored if present in old saves
                 def.isStatic = e.value("isStatic", false);
 
                 if (e.contains("color") && e["color"].is_array() && e["color"].size() == 4) {

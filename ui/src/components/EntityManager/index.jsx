@@ -46,7 +46,6 @@ export default function EntityManager({ selectedType, onSelectType }) {
       id,
       name: `Entity ${id}`,
       color: [180, 120, 200, 255],
-      density: 1.0,
       isStatic: false,
     });
     setSelectedId(id);

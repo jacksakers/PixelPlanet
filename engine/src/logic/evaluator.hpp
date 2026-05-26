@@ -19,4 +19,10 @@ int  getScore();
 int  getGameState();  // 0=idle, 1=active, 2=ended
 void resetGame();
 
+// Transient per-entity-type color overrides (SET_COLOR action).
+// Filled from g_entityRegistry + any active overrides.
+// Cleared whenever parseConfig() is called.
+void fillColorTable(uint8_t out[256 * 4]);
+void clearColorOverrides();
+
 } // namespace pp

@@ -6,9 +6,9 @@
  * JSON entities and rules passed to the engine at runtime.
  *
  * Physics design:
- *  - A GLOBAL gravity rule fires for any entity with density > 0 if the cell
- *    directly below is empty.  This means new entities automatically fall
- *    unless you set density=0 / isStatic=true.
+ *  - A GLOBAL gravity rule fires for any non-static entity if the cell
+ *    directly below is empty.  Static entities (isStatic=true) are skipped
+ *    entirely by the evaluator, so they never fall regardless of rules.
  *  - Entity-specific rules handle diagonal spreading (sand) and sideways
  *    flow (water) — behaviours that only apply to those types.
  */
@@ -34,9 +34,9 @@ export function nextEntityId(entities) {
 // Default entities
 // ---------------------------------------------------------------------------
 export const DEFAULT_ENTITIES = [
-  { id: 1, name: 'Sand',  color: [220, 180,  60, 255], density: 2.0, isStatic: false, variables: [] },
-  { id: 2, name: 'Water', color: [ 30, 100, 220, 200], density: 1.0, isStatic: false, variables: [] },
-  { id: 3, name: 'Stone', color: [120, 120, 130, 255], density: 0.0, isStatic: true,  variables: [] },
+  { id: 1, name: 'Sand',  color: [220, 180,  60, 255], isStatic: false, variables: [] },
+  { id: 2, name: 'Water', color: [ 30, 100, 220, 200], isStatic: false, variables: [] },
+  { id: 3, name: 'Stone', color: [120, 120, 130, 255], isStatic: true,  variables: [] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -46,13 +46,7 @@ export const DEFAULT_GLOBAL_RULES = [
   {
     id: 'global_gravity',
     trigger: 'OnTick',
-    condition: {
-      type: 'AND',
-      children: [
-        { type: 'PropertyCheck', prop: 'density', op: '>', val: 0 },
-        { type: 'NeighborCheck', dir: 'down', target: 'EMPTY' },
-      ],
-    },
+    condition: { type: 'NeighborCheck', dir: 'down', target: 'EMPTY' },
     actions: [{ type: 'Move', dir: 'down' }],
   },
 ];
@@ -243,19 +237,19 @@ export const ACTION_DIRECTIONS = [
 ];
 
 export const CONDITION_TYPES = [
-  'Always', 'NeighborCheck', 'PropertyCheck', 'VariableCheck',
-  'NeighborCount', 'Chance', 'AND', 'OR', 'NOT',
+  'Always', 'NeighborCheck', 'VariableCheck',
+  'NeighborCount', 'InRange', 'Chance', 'AND', 'OR', 'NOT',
 ];
 
 export const ACTION_TYPES = [
   'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
   'Eat', 'EatFirst', 'Swap', 'SwapFirst', 'MoveToward', 'MoveAway',
+  'SetColor', 'Teleport', 'BroadcastEvent',
   'AddScore', 'SetScore', 'StartGame', 'EndGame',
 ];
 
 export const PROPERTY_OPS = ['<', '<=', '==', '!=', '>', '>='];
-export const BUILT_IN_PROPS = ['density'];
-export const TRIGGERS = ['OnTick', 'OnRandomTick', 'OnClick', 'OnButtonPress'];
+export const TRIGGERS = ['OnTick', 'OnRandomTick', 'OnClick', 'OnButtonPress', 'OnTimer', 'OnEvent'];
 export const BUTTON_KEYS = ['up', 'down', 'left', 'right'];
 
 export const MODIFY_OPS = [

@@ -27,19 +27,56 @@
 #include "../math/rng.hpp"
 
 #include <cstring>
+#include <set>
+#include <string>
 
 namespace pp {
 
 // ---------------------------------------------------------------------------
 // Game / score / button global state
 // ---------------------------------------------------------------------------
-static int  g_score     = 0;          // accumulated score
-static int  g_gameState = 0;          // 0=idle, 1=active, 2=ended
-static bool g_buttons[4] = {};        // held direction buttons (0=up,1=down,2=left,3=right)
+static int    g_score     = 0;          // accumulated score
+static int    g_gameState = 0;          // 0=idle, 1=active, 2=ended
+static bool   g_buttons[4] = {};        // held direction buttons (0=up,1=down,2=left,3=right)
+static uint32_t g_tick    = 0;          // incremented every evaluateTick() call
+
+// BroadcastEvent / OnEvent system.
+// g_activeEvents: events broadcast in the PREVIOUS tick  (checked by OnEvent rules).
+// g_pendingEvents: events broadcast in the CURRENT tick   (become active next tick).
+static std::set<std::string> g_activeEvents;
+static std::set<std::string> g_pendingEvents;
+
+// ---------------------------------------------------------------------------
+// Transient color overrides (SET_COLOR action).
+// Index = entity ID. Flag indicates whether an override is active.
+// ---------------------------------------------------------------------------
+static uint8_t g_colorOverrideRGB[256][3] = {};
+static bool    g_colorOverrideActive[256] = {};
+
+void clearColorOverrides() {
+    memset(g_colorOverrideActive, 0, sizeof(g_colorOverrideActive));
+}
+
+void fillColorTable(uint8_t out[256 * 4]) {
+    memset(out, 0, 256 * 4);
+    for (const auto& [id, def] : g_entityRegistry.all()) {
+        if (id < 0 || id >= 256) continue;
+        if (g_colorOverrideActive[id]) {
+            out[id * 4 + 0] = g_colorOverrideRGB[id][0];
+            out[id * 4 + 1] = g_colorOverrideRGB[id][1];
+            out[id * 4 + 2] = g_colorOverrideRGB[id][2];
+        } else {
+            out[id * 4 + 0] = def.color[0];
+            out[id * 4 + 1] = def.color[1];
+            out[id * 4 + 2] = def.color[2];
+        }
+        out[id * 4 + 3] = def.color[3];  // alpha always from definition
+    }
+}
 
 int  getScore()     { return g_score; }
 int  getGameState() { return g_gameState; }
-void resetGame()    { g_score = 0; g_gameState = 0; }
+void resetGame()    { g_score = 0; g_gameState = 0; g_tick = 0; g_activeEvents.clear(); g_pendingEvents.clear(); }
 void setButtonState(int key, bool pressed) {
     if (key >= 0 && key < 4) g_buttons[key] = pressed;
 }
@@ -57,19 +94,8 @@ static bool evalNeighborCheck(int x, int y, Dir dir, int targetId) {
     return cell == static_cast<uint8_t>(targetId);
 }
 
-static bool evalPropertyCheck(uint8_t cellId, const Condition& c) {
-    float val = 0.0f;
-    if (c.propName == "density") {
-        val = g_entityRegistry.getDensity(static_cast<int>(cellId));
-    }
-
-    const auto& op = c.propOp;
-    if (op == "<")  return val <  c.propVal;
-    if (op == "<=") return val <= c.propVal;
-    if (op == "==") return val == c.propVal;
-    if (op == "!=") return val != c.propVal;
-    if (op == ">")  return val >  c.propVal;
-    if (op == ">=") return val >= c.propVal;
+static bool evalPropertyCheck(uint8_t /*cellId*/, const Condition& /*c*/) {
+    // PropertyCheck has been removed. Old saves that still contain it are treated as always-false.
     return false;
 }
 
@@ -105,6 +131,23 @@ static int countNeighbors(int x, int y, int targetId) {
     return count;
 }
 
+// Check if any cell within a Chebyshev radius matches the target.
+static bool evalInRange(int x, int y, const Condition& c) {
+    int r = c.inRangeRadius;
+    for (int dy = -r; dy <= r; ++dy) {
+        for (int dx = -r; dx <= r; ++dx) {
+            if (dx == 0 && dy == 0) continue;
+            int nx = x + dx, ny = y + dy;
+            if (!g_grid.valid(nx, ny)) continue;
+            uint8_t cell = g_grid.write[g_grid.idx(nx, ny)];
+            if      (c.inRangeTarget == TARGET_EMPTY) { if (cell == EMPTY_ID)  return true; }
+            else if (c.inRangeTarget == TARGET_ANY)   { if (cell != EMPTY_ID)  return true; }
+            else                                      { if (cell == static_cast<uint8_t>(c.inRangeTarget)) return true; }
+        }
+    }
+    return false;
+}
+
 static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId) {
     switch (c.type) {
         case COND_ALWAYS:
@@ -138,6 +181,8 @@ static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId) {
             if (op == ">=") return n >= c.countVal;
             return false;
         }
+        case COND_IN_RANGE:
+            return evalInRange(x, y, c);
     }
     return false;
 }
@@ -452,6 +497,71 @@ static bool execAction(int x, int y, const Action& a) {
         case ACTION_END_GAME:
             if (g_gameState == 1) g_gameState = 2;
             return true;
+
+        case ACTION_SET_COLOR: {
+            int ci = g_grid.idx(x, y);
+            uint8_t cid = g_grid.write[ci];
+            if (cid > 0) {
+                g_colorOverrideActive[cid]    = true;
+                g_colorOverrideRGB[cid][0]    = a.setColorR;
+                g_colorOverrideRGB[cid][1]    = a.setColorG;
+                g_colorOverrideRGB[cid][2]    = a.setColorB;
+            }
+            return true;
+        }
+
+        case ACTION_TELEPORT: {
+            if (a.teleportTarget == TARGET_EMPTY || a.teleportTarget == TARGET_ANY) {
+                // Move to a random empty cell anywhere on the grid.
+                for (int attempt = 0; attempt < 256; ++attempt) {
+                    int tx = static_cast<int>(rand32() % static_cast<uint32_t>(g_grid.w));
+                    int ty = static_cast<int>(rand32() % static_cast<uint32_t>(g_grid.h));
+                    if (tx == x && ty == y) continue;
+                    int ti = g_grid.idx(tx, ty);
+                    if (g_grid.write[ti] == EMPTY_ID) {
+                        g_grid.moveTo(x, y, tx, ty);
+                        return true;
+                    }
+                }
+                return false;
+            } else {
+                // Find nearest cell of target type (full ray scan) then
+                // move to the first empty cell adjacent to it.
+                int maxRange = g_grid.w > g_grid.h ? g_grid.w : g_grid.h;
+                int bestDist = maxRange + 1;
+                int bestTx = -1, bestTy = -1;
+                for (int d = 0; d < 8; ++d) {
+                    for (int step = 1; step <= maxRange; ++step) {
+                        int nx = x + DIR_DX[d] * step;
+                        int ny = y + DIR_DY[d] * step;
+                        if (!g_grid.valid(nx, ny)) break;
+                        if (g_grid.write[g_grid.idx(nx, ny)] == static_cast<uint8_t>(a.teleportTarget)) {
+                            if (step < bestDist) { bestDist = step; bestTx = nx; bestTy = ny; }
+                            break;
+                        }
+                    }
+                }
+                if (bestTx < 0) return false;
+                // Move to an empty cell adjacent to the target.
+                size_t s8 = rand32() % 8;
+                for (int k = 0; k < 8; ++k) {
+                    int d  = static_cast<int>((s8 + k) % 8);
+                    int ex = bestTx + DIR_DX[d];
+                    int ey = bestTy + DIR_DY[d];
+                    if (!g_grid.valid(ex, ey)) continue;
+                    if (g_grid.write[g_grid.idx(ex, ey)] == EMPTY_ID) {
+                        g_grid.moveTo(x, y, ex, ey);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        case ACTION_BROADCAST_EVENT:
+            if (!a.broadcastEventName.empty())
+                g_pendingEvents.insert(a.broadcastEventName);
+            return true;
     }
     return false;
 }
@@ -552,6 +662,12 @@ void evaluateTick() {
                     if (rule.buttonKey < 0 || rule.buttonKey > 3) continue;
                     if (!g_buttons[rule.buttonKey]) continue;
                 }
+                if (rule.trigger == TRIGGER_ON_TIMER) {
+                    if (rule.timerInterval <= 0 || (g_tick % static_cast<uint32_t>(rule.timerInterval)) != 0) continue;
+                }
+                if (rule.trigger == TRIGGER_ON_EVENT) {
+                    if (g_activeEvents.find(rule.eventName) == g_activeEvents.end()) continue;
+                }
                 if (execRule(rule, x, y, cellId)) { moved = true; break; }
             }
 
@@ -571,6 +687,12 @@ void evaluateTick() {
                         if (rule.buttonKey < 0 || rule.buttonKey > 3) continue;
                         if (!g_buttons[rule.buttonKey]) continue;
                     }
+                    if (rule.trigger == TRIGGER_ON_TIMER) {
+                        if (rule.timerInterval <= 0 || (g_tick % static_cast<uint32_t>(rule.timerInterval)) != 0) continue;
+                    }
+                    if (rule.trigger == TRIGGER_ON_EVENT) {
+                        if (g_activeEvents.find(rule.eventName) == g_activeEvents.end()) continue;
+                    }
                     bool cellMoved = false;
                     execRule(rule, x, y, cellId, &cellMoved);
                     if (cellMoved) break;
@@ -580,6 +702,10 @@ void evaluateTick() {
     }
 
     g.swapBuffers();
+    ++g_tick;
+    // Rotate event buffers: pending events become active for the next tick.
+    g_activeEvents = std::move(g_pendingEvents);
+    g_pendingEvents.clear();
 }
 
 } // namespace pp

@@ -2,7 +2,7 @@
  * EntityManager/EntityList.jsx
  *
  * Scrollable list of all defined entities.  Each row shows a colour swatch,
- * name, and density.  Clicking a row selects it for editing.
+ * and name.  Clicking a row selects it for editing.
  */
 
 import { useSimContext } from '../../store/SimContext.jsx';
@@ -41,10 +41,6 @@ const S = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
-  density: {
-    fontSize: '0.72rem',
-    color: '#666',
-  },
   addBtn: {
     marginTop: 8,
     padding: '5px 10px',
@@ -67,7 +63,6 @@ export default function EntityList({ selectedId, onSelect }) {
       id,
       name: `Entity ${id}`,
       color: [180, 120, 200, 255],
-      density: 1.0,
       isStatic: false,
     });
     onSelect(id);
@@ -83,7 +78,7 @@ export default function EntityList({ selectedId, onSelect }) {
         >
           <span style={S.swatch(e.color)} />
           <span style={S.name}>{e.name}</span>
-          <span style={S.density}>{e.isStatic ? 'static' : `ρ ${e.density}`}</span>
+          {e.isStatic && <span style={{ fontSize: '0.72rem', color: '#666' }}>static</span>}
         </div>
       ))}
       <button style={S.addBtn} onClick={handleAdd}>+ New Entity</button>

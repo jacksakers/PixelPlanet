@@ -23,11 +23,6 @@ int EntityRegistry::getByName(const std::string& name) const {
     return -1;
 }
 
-float EntityRegistry::getDensity(int id) const {
-    const EntityDef* def = get(id);
-    return def ? def->density : 0.0f;
-}
-
 int EntityDef::getVarSlot(const std::string& varName) const {
     for (const auto& v : variables)
         if (v.name == varName) return v.slot;

@@ -1,7 +1,7 @@
 /**
  * EntityManager/EntityEditor.jsx
  *
- * Form for editing a single entity definition: name, colour, density,
+ * Form for editing a single entity definition: name, colour,
  * isStatic, and named per-cell variables.
  * Includes a JSON toggle for direct editing of the entity object.
  */
@@ -207,27 +207,11 @@ export default function EntityEditor({ entityId }) {
             <span style={{ color: '#666', fontSize: '0.72rem' }}>{draft.color[3]}</span>
           </label>
 
-          <label style={field.label}>
-            Density
-            <input
-              type="number"
-              step="0.1"
-              value={draft.density}
-              onChange={(e) => commit({ density: parseFloat(e.target.value) || 0 })}
-              style={field.input}
-              disabled={draft.isStatic}
-              title={draft.isStatic ? 'Static entities ignore density' : ''}
-            />
-            <span style={{ fontSize: '0.7rem', color: '#555' }}>
-              {'> 0 = participates in gravity'}
-            </span>
-          </label>
-
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '0.82rem', color: '#bbb' }}>
             <input
               type="checkbox"
               checked={draft.isStatic}
-              onChange={(e) => commit({ isStatic: e.target.checked, density: e.target.checked ? 0 : draft.density })}
+              onChange={(e) => commit({ isStatic: e.target.checked })}
             />
             Static (immovable, no rule evaluation)
           </label>

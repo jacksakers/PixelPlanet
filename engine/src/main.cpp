@@ -109,4 +109,17 @@ void engine_reset_game() {
     resetGame();
 }
 
+/**
+ * Returns a pointer to a static 256×4 RGBA byte table built from the current
+ * entity registry.  Re-populated on every call so it always reflects the latest
+ * colours, including any changes made by SetColor actions.
+ * JS wraps this as: new Uint8Array(mod.HEAPU8.buffer, ptr, 256 * 4)
+ */
+EMSCRIPTEN_KEEPALIVE
+uint8_t* engine_get_color_table() {
+    static uint8_t table[256 * 4] = {};
+    fillColorTable(table);
+    return table;
+}
+
 } // extern "C"

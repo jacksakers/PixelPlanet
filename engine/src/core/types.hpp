@@ -36,6 +36,8 @@ enum TriggerType : int {
     TRIGGER_ON_RANDOM_TICK   = 1,
     TRIGGER_ON_CLICK         = 2,   // fires when user interacts with the cell (navigate mode)
     TRIGGER_ON_BUTTON_PRESS  = 3,   // fires every tick while a direction key/button is held
+    TRIGGER_ON_TIMER         = 4,   // fires if >= N ticks have elapsed
+    TRIGGER_ON_EVENT         = 5,   // fires when a named BroadcastEvent targets this entity
 };
 
 // Button key indices (for TRIGGER_ON_BUTTON_PRESS)
@@ -48,15 +50,16 @@ static constexpr int BUTTON_RIGHT = 3;
 // Condition types
 // ---------------------------------------------------------------------------
 enum ConditionType : int {
-    COND_ALWAYS        = 0,  // Always true
-    COND_NEIGHBOR      = 1,  // Check neighbouring cell type
-    COND_PROPERTY      = 2,  // Check entity built-in property (density)
-    COND_CHANCE        = 3,  // Random probability gate
-    COND_AND           = 4,  // All children must pass
-    COND_OR            = 5,  // Any child must pass
-    COND_NOT           = 6,  // Invert single child
-    COND_VARIABLE      = 7,  // Check per-cell variable (Phase 3)
-    COND_NEIGHBOR_COUNT = 8, // Count matching neighbours (Phase 3)
+    COND_ALWAYS         = 0,  // Always true
+    COND_NEIGHBOR       = 1,  // Check neighbouring cell type
+    COND_PROPERTY       = 2,  // (removed — kept for backwards-compat parse, evaluates false)
+    COND_CHANCE         = 3,  // Random probability gate
+    COND_AND            = 4,  // All children must pass
+    COND_OR             = 5,  // Any child must pass
+    COND_NOT            = 6,  // Invert single child
+    COND_VARIABLE       = 7,  // Check per-cell variable
+    COND_NEIGHBOR_COUNT = 8,  // Count matching neighbours
+    COND_IN_RANGE       = 9,  // Is there an entity of type X within radius N?
 };
 
 // ---------------------------------------------------------------------------
@@ -75,10 +78,13 @@ enum ActionType : int {
     ACTION_SWAP_FIRST      = 9,  // Try each dir; swap with first matching target
     ACTION_MOVE_TOWARD     = 10, // Scan surroundings; move one step toward nearest matching cell
     ACTION_MOVE_AWAY       = 11, // Scan surroundings; move one step away from nearest matching cell
-    ACTION_ADD_SCORE       = 12, // Add a value to the global score counter
-    ACTION_SET_SCORE       = 13, // Set the global score counter to a fixed value
-    ACTION_START_GAME      = 14, // Reset score to 0 and mark game as active
-    ACTION_END_GAME        = 15, // Mark game as ended (triggers end-screen in UI)
+    ACTION_ADD_SCORE        = 12, // Add a value to the global score counter
+    ACTION_SET_SCORE        = 13, // Set the global score counter to a fixed value
+    ACTION_START_GAME       = 14, // Reset score to 0 and mark game as active
+    ACTION_END_GAME         = 15, // Mark game as ended (triggers end-screen in UI)
+    ACTION_SET_COLOR        = 16, // Change this entity type's color in the registry
+    ACTION_TELEPORT         = 17, // Instantly move to a random empty cell or near a target type
+    ACTION_BROADCAST_EVENT  = 18, // Emit a named event; cells with OnEvent react next tick
 };
 
 // ---------------------------------------------------------------------------

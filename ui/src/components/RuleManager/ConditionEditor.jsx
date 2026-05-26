@@ -10,7 +10,6 @@ import {
   CONDITION_TYPES,
   DIRECTIONS,
   PROPERTY_OPS,
-  BUILT_IN_PROPS,
 } from '../../shared/defaults.js';
 
 const S = {
@@ -136,9 +135,9 @@ function VarNameSelect({ entityId, value, onChange }) {
 const CONDITION_DEFAULTS = {
   Always:        { type: 'Always' },
   NeighborCheck: { type: 'NeighborCheck', dir: 'down', target: 'EMPTY' },
-  PropertyCheck: { type: 'PropertyCheck', prop: 'density', op: '>', val: 0 },
   VariableCheck: { type: 'VariableCheck', varName: '', op: '>=', val: 0 },
   NeighborCount: { type: 'NeighborCount', target: 'ANY', op: '>=', val: 1 },
+  InRange:       { type: 'InRange', target: 'ANY', radius: 5 },
   Chance:        { type: 'Chance', val: 50 },
   AND:           { type: 'AND', children: [] },
   OR:            { type: 'OR', children: [] },
@@ -204,25 +203,6 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
           </>
         )}
 
-        {/* PropertyCheck fields */}
-        {condition.type === 'PropertyCheck' && (
-          <>
-            <select style={S.sel} value={condition.prop ?? 'density'} onChange={(e) => set({ prop: e.target.value })}>
-              {BUILT_IN_PROPS.map((p) => <option key={p}>{p}</option>)}
-            </select>
-            <select style={S.sel} value={condition.op ?? '>'} onChange={(e) => set({ op: e.target.value })}>
-              {PROPERTY_OPS.map((o) => <option key={o}>{o}</option>)}
-            </select>
-            <input
-              style={S.inp}
-              type="number"
-              step="0.1"
-              value={condition.val ?? 0}
-              onChange={(e) => set({ val: parseFloat(e.target.value) || 0 })}
-            />
-          </>
-        )}
-
         {/* VariableCheck — check per-cell variable */}
         {condition.type === 'VariableCheck' && (
           <>
@@ -261,6 +241,25 @@ export default function ConditionEditor({ condition, onChange, onDelete, depth =
               value={condition.val ?? 1}
               onChange={(e) => set({ val: parseInt(e.target.value) || 0 })}
             />
+          </>
+        )}
+
+        {/* InRange — sensor-style detection within a radius */}
+        {condition.type === 'InRange' && (
+          <>
+            <TargetSelect
+              value={condition.target ?? 'ANY'}
+              onChange={(v) => set({ target: v })}
+            />
+            <span style={{ fontSize: '0.72rem', color: '#666' }}>within</span>
+            <input
+              style={S.inp}
+              type="number"
+              min={1} max={32} step={1}
+              value={condition.radius ?? 5}
+              onChange={(e) => set({ radius: Math.max(1, Math.min(32, parseInt(e.target.value) || 1)) })}
+            />
+            <span style={{ fontSize: '0.72rem', color: '#666' }}>cells</span>
           </>
         )}
 

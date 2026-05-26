@@ -24,7 +24,6 @@ struct EntityDef {
     int         id       = 0;
     std::string name     = "";
     std::array<uint8_t, 4> color = { 255, 255, 255, 255 };  // RGBA
-    float       density  = 1.0f;   // > 0 = participates in gravity
     bool        isStatic = false;  // engine skips rule evaluation entirely
     std::vector<VarDef> variables; // named per-cell variables (max 4)
 
@@ -44,7 +43,6 @@ public:
     // Returns the entity ID for the given name, or -1 if not found.
     int getByName(const std::string& name) const;
     const std::unordered_map<int, EntityDef>& all() const { return entities_; }
-    float getDensity(int id) const;
 
 private:
     std::unordered_map<int, EntityDef> entities_;

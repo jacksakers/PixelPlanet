@@ -34,6 +34,10 @@ struct Condition {
     std::string countOp;      // same op set as propOp
     int  countVal     = 0;
 
+    // COND_IN_RANGE
+    int  inRangeTarget = TARGET_ANY;  // TARGET_EMPTY / TARGET_ANY / entity ID
+    int  inRangeRadius = 5;           // Chebyshev radius to scan
+
     // COND_AND | COND_OR | COND_NOT
     std::vector<Condition> children;
 };
@@ -83,6 +87,17 @@ struct Action {
 
     // ACTION_ADD_SCORE / ACTION_SET_SCORE
     float scoreVal = 1.0f;  // value to add or set
+
+    // ACTION_SET_COLOR — change entity type color in registry
+    uint8_t setColorR = 255;
+    uint8_t setColorG = 255;
+    uint8_t setColorB = 255;
+
+    // ACTION_TELEPORT — move to random empty cell or near a target entity type
+    int teleportTarget = TARGET_EMPTY;  // TARGET_EMPTY=random empty, entity ID=near that type
+
+    // ACTION_BROADCAST_EVENT — emit a named event; OnEvent rules react next tick
+    std::string broadcastEventName;
 };
 
 // ---------------------------------------------------------------------------
@@ -93,6 +108,8 @@ struct Rule {
     TriggerType trigger            = TRIGGER_ON_TICK;
     int         randomTickInterval = 60;  // used only for TRIGGER_ON_RANDOM_TICK
     int         buttonKey          = 0;   // used only for TRIGGER_ON_BUTTON_PRESS (0=up,1=down,2=left,3=right)
+    int         timerInterval      = 60;  // used only for TRIGGER_ON_TIMER (fire every N ticks)
+    std::string eventName;               // used only for TRIGGER_ON_EVENT
     Condition   condition;
     std::vector<Action> actions;
 };
