@@ -102,7 +102,7 @@ function AppInner() {
   const handleTogglePause = useCallback(() => setIsPaused((p) => !p), []);
   const handleSpeedUp     = useCallback(() => setSpeedIdx((i) => Math.min(i + 1, SPEEDS.length - 1)), []);
   const handleSlowDown    = useCallback(() => setSpeedIdx((i) => Math.max(i - 1, 0)), []);
-  const handleClear       = useCallback(() => { clearCanvasRef.current?.(); }, []);
+  const handleClear       = useCallback(() => { clearCanvasRef.current?.(); engineRef.current?.resetGame(); }, []);
   const handleStep        = useCallback(() => { stepCanvasRef.current?.(); }, []);
   const handleExport      = useCallback(() => { exportCanvasRef.current?.(); }, []);
 

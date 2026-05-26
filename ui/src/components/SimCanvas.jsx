@@ -156,12 +156,24 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
 
           if (mouseRef.current.down) {
             const { x, y } = mouseRef.current;
-            const type   = selectedTypeRef.current;
             const radius = brushSizeRef?.current ?? BRUSH_RADIUS;
-            for (let dy = -radius; dy <= radius; dy++) {
-              for (let dx = -radius; dx <= radius; dx++) {
-                if (dx * dx + dy * dy <= radius * radius) {
-                  engineSetPixel(mod, x + dx, y + dy, type);
+            const toolMode = toolModeRef?.current ?? 'paint';
+            if (toolMode === 'none') {
+              // Navigate mode: fire OnClick for all cells in brush radius
+              for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                  if (dx * dx + dy * dy <= radius * radius) {
+                    mod._engine_send_click(x + dx, y + dy);
+                  }
+                }
+              }
+            } else {
+              const type = selectedTypeRef.current;
+              for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                  if (dx * dx + dy * dy <= radius * radius) {
+                    engineSetPixel(mod, x + dx, y + dy, type);
+                  }
                 }
               }
             }
@@ -364,9 +376,8 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
     const pos = toGrid(e);
     const toolMode = toolModeRef?.current ?? 'paint';
     if (toolMode === 'none') {
-      // Navigate mode: fire OnClick rules for the cell under cursor
-      const mod = modRef.current;
-      if (mod) mod._engine_send_click(pos.x, pos.y);
+      // Navigate mode: start tracking hold — RAF loop fires clicks each frame
+      mouseRef.current = { down: true, ...pos };
       return;
     }
     if (toolMode === 'fill') {
@@ -434,9 +445,8 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
       return;
     }
     if (toolMode === 'none') {
-      // Navigate mode: fire OnClick rules for tapped cell
-      const mod = modRef.current;
-      if (mod) mod._engine_send_click(pos.x, pos.y);
+      // Navigate mode: start tracking hold — RAF loop fires clicks each frame
+      mouseRef.current = { down: true, ...pos };
       return;
     }
     mouseRef.current = { down: true, ...pos };

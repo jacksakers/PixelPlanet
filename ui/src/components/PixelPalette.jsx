@@ -134,13 +134,6 @@ export default function PixelPalette({ selectedType, onSelectType, brushSize, on
   const { entities } = useSimContext();
 
   const tools = [
-    ...entities.map((e, i) => ({
-      type:  e.id,
-      label: e.name,
-      color: `rgba(${e.color[0]},${e.color[1]},${e.color[2]},${e.color[3] / 255})`,
-      key:   KEYS[i] ?? '',
-      isErase: false,
-    })),
     {
       type:    PIXEL_EMPTY,
       label:   'Erase',
@@ -148,6 +141,13 @@ export default function PixelPalette({ selectedType, onSelectType, brushSize, on
       key:     KEYS[entities.length] ?? '',
       isErase: true,
     },
+    ...entities.map((e, i) => ({
+      type:  e.id,
+      label: e.name,
+      color: `rgba(${e.color[0]},${e.color[1]},${e.color[2]},${e.color[3] / 255})`,
+      key:   KEYS[i] ?? '',
+      isErase: false,
+    })),
   ];
 
   return (
