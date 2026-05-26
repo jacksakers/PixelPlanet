@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { TRIGGERS, newRuleId } from '../../shared/defaults.js';
+import { TRIGGERS, BUTTON_KEYS, newRuleId } from '../../shared/defaults.js';
 import ConditionEditor from './ConditionEditor.jsx';
 import ActionEditor    from './ActionEditor.jsx';
 
@@ -223,9 +223,28 @@ export default function RuleEditor({ rule, onSave, onCancel, entityId }) {
           {/* Trigger */}
           <div style={S.section}>
             <span style={S.sectionTitle}>Trigger</span>
-            <select style={S.sel} value={draft.trigger} onChange={(e) => setDraft((d) => ({ ...d, trigger: e.target.value }))}>
+            <select style={S.sel} value={draft.trigger} onChange={(e) => setDraft((d) => ({ ...d, trigger: e.target.value, button: d.button ?? 'up' }))}>
               {TRIGGERS.map((t) => <option key={t}>{t}</option>)}
             </select>
+            {/* Button key picker — only for OnButtonPress */}
+            {draft.trigger === 'OnButtonPress' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: '#777', marginTop: 4 }}>
+                Button
+                <select
+                  style={S.sel}
+                  value={draft.button ?? 'up'}
+                  onChange={(e) => setDraft((d) => ({ ...d, button: e.target.value }))}
+                >
+                  {BUTTON_KEYS.map((k) => <option key={k}>{k}</option>)}
+                </select>
+              </label>
+            )}
+            {/* Info text for OnClick */}
+            {draft.trigger === 'OnClick' && (
+              <span style={{ fontSize: '0.68rem', color: '#556', fontStyle: 'italic', marginTop: 2 }}>
+                Fires when the cell is clicked in Navigate tool mode.
+              </span>
+            )}
           </div>
 
           {/* Condition */}

@@ -1,0 +1,10 @@
+OnCollision trigger — fires when another entity moves into the same cell (natural extension of the current Eat/Swap logic)
+OnSpawn / OnDestroy triggers — one-shot events at birth/death (e.g., spawn an explosion on death)
+Timer condition — "only fire if more than N ticks have passed since last fire" — enables cooldowns on abilities
+InRange condition — "is there an entity of type X within radius N?" — sensor-style detection without moving
+BroadcastEvent + OnEvent trigger — entity A fires an event by name; all entity Bs with OnEvent rules react (pub/sub between entities)
+Multiple players — assign entities to "player slots" and support multiple simultaneous D-pads (P1/P2 split)
+PlaySound action — play a tone or Web Audio API oscillator note (score feedback, death sounds)
+SetColor action — dynamically change an entity's color based on state (e.g., health bar encoded in color)
+Teleport action — instantly move to a random empty cell, or to the nearest cell of a given type
+Global variables — shared state accessible by all entities (e.g., a global daylight value that affects all plant rules)

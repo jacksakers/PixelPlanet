@@ -38,6 +38,23 @@ Advanced Actions: Implement Spawn (creating new pixels based on triggers) and Mo
 
 Global Rules: Implement the separation of Global rules (iterated over the whole grid based on properties) vs. Local rules.
 
+Phase 3.5: Interactive Triggers, Score System & Game Loop  [COMPLETED]
+
+Goal: Add user-interaction triggers so entities can respond to clicks and directional inputs, and introduce a lightweight game loop with score tracking.
+
+OnClick Trigger: A new trigger that fires for a cell when the user interacts with it in Navigate (no-op) tool mode. Navigate mode is accessible via the 🧭 button on desktop/mobile or the Escape key; in this mode canvas clicks fire entity rules instead of painting. Implemented in engine_send_click(x, y) which is called by SimCanvas when toolMode === 'none'.
+
+OnButtonPress Trigger: A new trigger that fires every tick while a specified direction key (up/down/left/right) is held. Direction keys map to the keyboard arrow keys. When any rule in the loaded config uses OnButtonPress, an on-screen D-pad controller (GameController.jsx) automatically appears on mobile. Desktop uses arrow keys directly. The button state is communicated to the C++ engine via engine_set_button_state(key, isDown).
+
+Score Actions & Game Loop: Four new actions manage a global game session:
+  - StartGame: resets score to 0 and marks the game as active.
+  - EndGame: ends the session and shows the final score overlay.
+  - AddScore (val): increments the score by val (only while game is active).
+  - SetScore (val): sets the score to an absolute value.
+  The JS side polls engine_get_score() and engine_get_game_state() every animation frame and displays them via ScoreDisplay.jsx. The "Restart" button in the game-over overlay calls engine_reset_game().
+
+Navigate Tool Mode: Added a fourth tool mode ('none') alongside paint/fill/eyedropper. Clicking the 🧭 Navigate button (or pressing Escape) switches to this mode — canvas clicks are treated as interaction events rather than paint operations, enabling click-based gameplay.
+
 Phase 4: Optimization & Scale
 
 Goal: Expand the canvas size drastically without dropping framerates.

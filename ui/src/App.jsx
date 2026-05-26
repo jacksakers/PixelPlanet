@@ -4,6 +4,8 @@ import Toolbar       from './components/Toolbar.jsx';
 import Sidebar       from './components/Sidebar.jsx';
 import PixelPalette  from './components/PixelPalette.jsx';
 import MobileHUD     from './components/MobileHUD.jsx';
+import GameController from './components/GameController.jsx';
+import ScoreDisplay  from './components/ScoreDisplay.jsx';
 import { SimProvider, useSimContext } from './store/SimContext.jsx';
 /** Returns true when the viewport width is ≤ 640 px (phone / small tablet). */
 function useIsMobile() {
@@ -28,16 +30,49 @@ function AppInner() {
   const selectedTypeRef = useRef(PIXEL_SAND);
   const [brushSize, setBrushSize] = useState(3);
   const brushSizeRef = useRef(3);
-  const { entities, undo, redo, canUndo, canRedo, importConfig } = useSimContext();
+  const { entities, globalRules, entityRules, undo, redo, canUndo, canRedo, importConfig } = useSimContext();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Tool mode: 'paint' | 'fill'
+  // Tool mode: 'paint' | 'fill' | 'eyedropper' | 'none' (navigate)
   const [toolMode, setToolMode]   = useState('paint');
   const toolModeRef               = useRef('paint');
   const handleSetToolMode = useCallback((mode) => {
     toolModeRef.current = mode;
     setToolMode(mode);
+  }, []);
+
+  // Engine interface (populated by SimCanvas when WASM loads)
+  const engineRef = useRef(null);
+
+  // Game / score state — polled from engine each RAF
+  const [score,     setScore]     = useState(0);
+  const [gameState, setGameState] = useState(0);  // 0=idle, 1=active, 2=ended
+
+  // Detect whether any rule in the current config uses OnButtonPress
+  const hasButtonRules = useCallback(() => {
+    const allRules = [
+      ...globalRules,
+      ...Object.values(entityRules).flat(),
+    ];
+    return allRules.some((r) => r.trigger === 'OnButtonPress');
+  }, [globalRules, entityRules]);
+
+  // Poll score + game state once per animation frame (cheap integer reads)
+  useEffect(() => {
+    let rafId;
+    const poll = () => {
+      const eng = engineRef.current;
+      if (eng) {
+        const gs = eng.getGameState();
+        const sc = eng.getScore();
+        setGameState((prev) => (prev !== gs ? gs : prev));
+        setScore((prev) => (prev !== sc ? sc : prev));
+      }
+      rafId = requestAnimationFrame(poll);
+    };
+    rafId = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   // Simulation controls
@@ -73,20 +108,47 @@ function AppInner() {
 
   // Keyboard shortcuts
   useEffect(() => {
+    // Arrow key → button key index mapping
+    const ARROW_MAP = { ArrowUp: 0, ArrowDown: 1, ArrowLeft: 2, ArrowRight: 3 };
+
     const handler = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
       // Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+      // Arrow keys → OnButtonPress engine events (prevent page scroll)
+      if (e.key in ARROW_MAP) {
+        e.preventDefault();
+        engineRef.current?.setButtonState(ARROW_MAP[e.key], true);
+        return;
+      }
+      // Escape → toggle navigate (none) mode
+      if (e.key === 'Escape') {
+        handleSetToolMode(toolModeRef.current === 'none' ? 'paint' : 'none');
+        return;
+      }
       // Numeric keys → entity selection
       const idx = parseInt(e.key) - 1;
       if (isNaN(idx) || idx < 0) return;
       if (idx < entities.length) handleSelectType(entities[idx].id);
       else if (idx === entities.length) handleSelectType(0);
     };
+
+    const upHandler = (e) => {
+      if (e.key in ARROW_MAP) {
+        engineRef.current?.setButtonState(ARROW_MAP[e.key], false);
+      }
+    };
+
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [entities, handleSelectType, undo, redo]);
+    window.addEventListener('keyup', upHandler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('keyup', upHandler);
+      // Release all buttons on unmount
+      for (let k = 0; k < 4; k++) engineRef.current?.setButtonState(k, false);
+    };
+  }, [entities, handleSelectType, undo, redo, handleSetToolMode]);
 
   // Deep-link: ?pack=X-XXXX — auto-load a shared pack on page load.
   useEffect(() => {
@@ -145,7 +207,7 @@ function AppInner() {
           />
 
           {/* Canvas fills all space above the HUD */}
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
             <SimCanvas
               selectedTypeRef={selectedTypeRef}
               brushSizeRef={brushSizeRef}
@@ -156,7 +218,14 @@ function AppInner() {
               exportCanvasRef={exportCanvasRef}
               toolModeRef={toolModeRef}
               onSelectType={handleSelectType}
+              engineRef={engineRef}
             />
+            <ScoreDisplay
+              score={score}
+              gameState={gameState}
+              onRestart={() => engineRef.current?.resetGame()}
+            />
+            {hasButtonRules() && <GameController engineRef={engineRef} />}
           </div>
 
           {/* Bottom HUD */}
@@ -203,7 +272,7 @@ function AppInner() {
           />
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <Sidebar selectedType={selectedType} onSelectType={handleSelectType} />
-            <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
               <SimCanvas
                 selectedTypeRef={selectedTypeRef}
                 brushSizeRef={brushSizeRef}
@@ -214,7 +283,14 @@ function AppInner() {
                 exportCanvasRef={exportCanvasRef}
                 toolModeRef={toolModeRef}
                 onSelectType={handleSelectType}
+                engineRef={engineRef}
               />
+              <ScoreDisplay
+                score={score}
+                gameState={gameState}
+                onRestart={() => engineRef.current?.resetGame()}
+              />
+              {hasButtonRules() && <GameController engineRef={engineRef} />}
             </div>
             <PixelPalette
               selectedType={selectedType}

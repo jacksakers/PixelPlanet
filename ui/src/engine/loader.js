@@ -99,6 +99,57 @@ export function engineSetSeed(mod, seed) {
 }
 
 /**
+ * Fire OnClick rules for the cell at (x, y).
+ * Called when the user clicks the canvas in navigate (no-op) tool mode.
+ * @param {object} mod
+ * @param {number} x
+ * @param {number} y
+ */
+export function engineSendClick(mod, x, y) {
+  mod._engine_send_click(x, y);
+}
+
+/**
+ * Set or release a direction button for OnButtonPress trigger evaluation.
+ * @param {object} mod
+ * @param {number} key     - 0=up, 1=down, 2=left, 3=right
+ * @param {boolean} isDown - true = button held, false = released
+ */
+export function engineSetButtonState(mod, key, isDown) {
+  mod._engine_set_button_state(key, isDown ? 1 : 0);
+}
+
+/**
+ * Returns the current game score (integer).
+ * AddScore / SetScore actions accumulate here while game is active.
+ * @param {object} mod
+ * @returns {number}
+ */
+export function engineGetScore(mod) {
+  return mod._engine_get_score();
+}
+
+/**
+ * Returns the current game state:
+ *   0 = idle (no active game)
+ *   1 = active (StartGame was fired, score is accumulating)
+ *   2 = ended  (EndGame was fired — UI should show final score)
+ * @param {object} mod
+ * @returns {number}
+ */
+export function engineGetGameState(mod) {
+  return mod._engine_get_game_state();
+}
+
+/**
+ * Reset score to 0 and game state to idle.
+ * @param {object} mod
+ */
+export function engineResetGame(mod) {
+  mod._engine_reset_game();
+}
+
+/**
  * Advance the simulation one tick.
  * @param {object} mod
  */

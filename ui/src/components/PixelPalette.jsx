@@ -240,7 +240,19 @@ export default function PixelPalette({ selectedType, onSelectType, brushSize, on
             }}
           >🔍 Pick</button>
         </div>
-        <div style={{ fontSize: '0.58rem', color: '#334', marginTop: 4 }}>right-click = quick eyedropper</div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+          <button
+            title="Navigate (no painting — clicks fire OnClick rules; Escape toggles)"
+            onClick={() => onSetToolMode?.(toolMode === 'none' ? 'paint' : 'none')}
+            style={{
+              flex: 1, padding: '3px 0', fontSize: '0.72rem', borderRadius: 5, cursor: 'pointer',
+              background: toolMode === 'none' ? '#2d2d44' : 'transparent',
+              border: toolMode === 'none' ? '1px solid #5566aa' : '1px solid #2a2a3a',
+              color: toolMode === 'none' ? '#aaccff' : '#556',
+            }}
+          >🧭 Navigate</button>
+        </div>
+        <div style={{ fontSize: '0.58rem', color: '#334', marginTop: 4 }}>right-click = quick eyedropper · Esc = toggle navigate</div>
       </div>
     </div>
   );

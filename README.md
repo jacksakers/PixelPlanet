@@ -97,6 +97,7 @@ pixel-planet/
 | **1** | High-performance WASM foundation + falling sand demo | ✅ **Done** |
 | **2** | Data-driven engine — JSON rule AST parser | ✅ **Done** |
 | **3** | Variables, lifetimes, boolean logic, Eat/Swap/MoveToward/MoveAway actions, Pack Manager, rule labels, JSON editors, rule reordering | ✅ **Done** |
+| **3.5** | OnClick & OnButtonPress triggers, score/game-loop actions, navigate tool mode, mobile D-pad controller, score overlay | ✅ **Done** |
 | 4 | Chunking, multithreading, double buffering | 🔲 Planned |
 | 5 | Visual scripting UI (Scratch-like node editor) | 🔲 Planned |
 | 6 | Ecosystem sharing, serialisation, blueprints | 🔲 Planned |
@@ -132,6 +133,17 @@ See [QUICKSTART.md](QUICKSTART.md) for full step-by-step setup.
 
 ---
 
+## Trigger reference
+
+| Trigger | When it fires |
+|---------|--------------|
+| `OnTick` | Every simulation tick (default). |
+| `OnRandomTick` | Randomly, approximately once every N ticks (configurable interval). |
+| `OnClick` | When the user clicks/taps the cell while in **Navigate** tool mode. |
+| `OnButtonPress` | Every tick while the specified direction key (up/down/left/right) is held. |
+
+---
+
 ## Action reference (summary)
 
 | Action | Description |
@@ -144,6 +156,10 @@ See [QUICKSTART.md](QUICKSTART.md) for full step-by-step setup.
 | `Spawn` | Create a new cell of a given type in a neighbouring slot. |
 | `Destroy` | Remove self (set to EMPTY). |
 | `ModifyVariable` | Add / subtract / multiply / set a per-cell variable. |
+| `AddScore` | Add a value to the global score counter (only while game is active). |
+| `SetScore` | Set the global score counter to a fixed value (only while game is active). |
+| `StartGame` | Reset score to 0 and start the game loop (activates AddScore/SetScore). |
+| `EndGame` | End the current game session and display the final score overlay. |
 | `Eat` / `EatFirst` | Move into a neighbouring cell of a given type, consuming it. |
 | `Swap` / `SwapFirst` | Swap positions with a neighbouring cell of a given type. |
 

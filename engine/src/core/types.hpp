@@ -32,9 +32,17 @@ inline constexpr int DIR_DY[8] = { -1,  1,  0,  0, -1, -1,  1,  1 };
 // Rule triggers
 // ---------------------------------------------------------------------------
 enum TriggerType : int {
-    TRIGGER_ON_TICK        = 0,
-    TRIGGER_ON_RANDOM_TICK = 1,
+    TRIGGER_ON_TICK          = 0,
+    TRIGGER_ON_RANDOM_TICK   = 1,
+    TRIGGER_ON_CLICK         = 2,   // fires when user interacts with the cell (navigate mode)
+    TRIGGER_ON_BUTTON_PRESS  = 3,   // fires every tick while a direction key/button is held
 };
+
+// Button key indices (for TRIGGER_ON_BUTTON_PRESS)
+static constexpr int BUTTON_UP    = 0;
+static constexpr int BUTTON_DOWN  = 1;
+static constexpr int BUTTON_LEFT  = 2;
+static constexpr int BUTTON_RIGHT = 3;
 
 // ---------------------------------------------------------------------------
 // Condition types
@@ -67,6 +75,10 @@ enum ActionType : int {
     ACTION_SWAP_FIRST      = 9,  // Try each dir; swap with first matching target
     ACTION_MOVE_TOWARD     = 10, // Scan surroundings; move one step toward nearest matching cell
     ACTION_MOVE_AWAY       = 11, // Scan surroundings; move one step away from nearest matching cell
+    ACTION_ADD_SCORE       = 12, // Add a value to the global score counter
+    ACTION_SET_SCORE       = 13, // Set the global score counter to a fixed value
+    ACTION_START_GAME      = 14, // Reset score to 0 and mark game as active
+    ACTION_END_GAME        = 15, // Mark game as ended (triggers end-screen in UI)
 };
 
 // ---------------------------------------------------------------------------

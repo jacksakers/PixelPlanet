@@ -78,13 +78,14 @@ const FALLBACK = {
   ACTION_TYPES: [
     'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
     'Eat', 'EatFirst', 'Swap', 'SwapFirst', 'MoveToward', 'MoveAway',
+    'AddScore', 'SetScore', 'StartGame', 'EndGame',
   ],
   DIRECTIONS: [
     'up', 'down', 'left', 'right',
     'up-left', 'up-right', 'down-left', 'down-right',
     'any',
   ],
-  TRIGGERS: ['OnTick', 'OnRandomTick'],
+  TRIGGERS: ['OnTick', 'OnRandomTick', 'OnClick', 'OnButtonPress'],
   PROPERTY_OPS: ['<', '<=', '==', '!=', '>', '>='],
   BUILT_IN_PROPS: ['density'],
   MODIFY_OPS: [
@@ -292,6 +293,30 @@ const ACTION_DETAIL = {
       { name: 'range',  type: 'number (1–32)',           desc: 'How many cells to scan along each ray. Default 5.' },
     ],
     example: `{ "type": "MoveAway", "target": "Predator", "range": 8 }`,
+  },
+  AddScore: {
+    desc: 'Adds `val` to the global score counter. Only has effect while the game is active (after `StartGame` and before `EndGame`). Use this in rules that fire when the player achieves something — collecting an item, eating an enemy, etc.',
+    fields: [
+      { name: 'val', type: 'number', desc: 'Amount to add to the score. Can be negative. Default 1.' },
+    ],
+    example: `{ "type": "AddScore", "val": 10 }`,
+  },
+  SetScore: {
+    desc: 'Sets the global score counter to an absolute value. Only has effect while the game is active.',
+    fields: [
+      { name: 'val', type: 'number', desc: 'New score value. Default 0.' },
+    ],
+    example: `{ "type": "SetScore", "val": 0 }`,
+  },
+  StartGame: {
+    desc: 'Resets the score to 0 and marks the game as **active**. While active, `AddScore` and `SetScore` actions accumulate points and the score badge is visible in the UI. Typically placed on a "Start" button entity with an `OnClick` trigger.',
+    fields: [],
+    example: `{ "type": "StartGame" }`,
+  },
+  EndGame: {
+    desc: 'Ends the current game session. The UI shows a "Game Over" overlay with the final score. The game stays in ended state until the player clicks Restart (which calls `engine_reset_game()`). Has no effect if the game is not currently active.',
+    fields: [],
+    example: `{ "type": "EndGame" }`,
   },
 };
 
@@ -530,6 +555,8 @@ ${TRIGGERS.map(t => {
   const desc = {
     OnTick: 'Fires every simulation tick (~60 times/second). Use for continuous physics.',
     OnRandomTick: 'Fires on a random interval. Use for slow, stochastic changes (decay, spreading fire). Add `"interval": <ticks>` to set average cadence.',
+    OnClick: 'Fires once when the user clicks or taps the cell while the **Navigate** tool mode is active (toolMode = `none`). Add `"button"` field to specify a key for button-press rules. Useful for interactive entities: buttons, doors, collectibles.',
+    OnButtonPress: 'Fires every tick while a specified direction key is held. Add `"button": "up"|"down"|"left"|"right"` to the rule. Arrow keys on desktop; on-screen D-pad on mobile (auto-shown when any rule uses this trigger). Use to build player-controlled entities.',
   }[t] ?? '_No description yet._';
   return `| \`${t}\` | ${desc} |`;
 }).join('\n')}

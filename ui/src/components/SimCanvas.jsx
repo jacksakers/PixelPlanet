@@ -38,10 +38,11 @@ const BRUSH_RADIUS = 3;
  *   clearCanvasRef   - React.MutableRefObject<function|null> (set to clear fn by this component)
  *   stepCanvasRef    - React.MutableRefObject<function|null> (set to step fn — advance one tick)
  *   exportCanvasRef  - React.MutableRefObject<function|null> (set to export fn — PNG download)
- *   toolModeRef      - React.MutableRefObject<'paint'|'fill'> (active tool mode)
+ *   toolModeRef      - React.MutableRefObject<'paint'|'fill'|'eyedropper'|'none'> (active tool mode)
  *   onSelectType     - (type: number) => void  (eyedropper right-click callback)
+ *   engineRef        - React.MutableRefObject<object|null>  (receives engine interface when ready)
  */
-export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, tickRateRef, clearCanvasRef, stepCanvasRef, exportCanvasRef, toolModeRef, onSelectType }) {
+export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, tickRateRef, clearCanvasRef, stepCanvasRef, exportCanvasRef, toolModeRef, onSelectType, engineRef }) {
   const canvasRef       = useRef(null);
   const containerRef    = useRef(null);
   const modRef          = useRef(null);
@@ -136,6 +137,17 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
             const url = canvas.toDataURL('image/png');
             const a = document.createElement('a');
             a.href = url; a.download = `pixelplanet_${Date.now()}.png`; a.click();
+          };
+        }
+
+        // Expose engine interface to App for button state, score, etc.
+        if (engineRef) {
+          engineRef.current = {
+            sendClick:       (x, y)       => mod._engine_send_click(x, y),
+            setButtonState:  (key, isDown) => mod._engine_set_button_state(key, isDown ? 1 : 0),
+            getScore:        ()            => mod._engine_get_score(),
+            getGameState:    ()            => mod._engine_get_game_state(),
+            resetGame:       ()            => mod._engine_reset_game(),
           };
         }
 
@@ -351,6 +363,12 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
     if (e.button === 2) return; // handled by onContextMenu
     const pos = toGrid(e);
     const toolMode = toolModeRef?.current ?? 'paint';
+    if (toolMode === 'none') {
+      // Navigate mode: fire OnClick rules for the cell under cursor
+      const mod = modRef.current;
+      if (mod) mod._engine_send_click(pos.x, pos.y);
+      return;
+    }
     if (toolMode === 'fill') {
       floodFill(pos.x, pos.y, selectedTypeRef.current);
     } else {
@@ -413,6 +431,12 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
     }
     if (toolMode === 'fill') {
       floodFill(pos.x, pos.y, selectedTypeRef.current);
+      return;
+    }
+    if (toolMode === 'none') {
+      // Navigate mode: fire OnClick rules for tapped cell
+      const mod = modRef.current;
+      if (mod) mod._engine_send_click(pos.x, pos.y);
       return;
     }
     mouseRef.current = { down: true, ...pos };

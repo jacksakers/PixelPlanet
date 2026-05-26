@@ -1,16 +1,21 @@
 /**
- * PixelPlanet - Phase 2 Engine
+ * PixelPlanet - Phase 3+ Engine
  *
- * Physics are now fully data-driven: entities and rules are loaded at runtime
+ * Physics are fully data-driven: entities and rules are loaded at runtime
  * via engine_load_config() from a JSON payload produced by the React UI.
  *
  * Exported C API:
- *   engine_init(w, h)                 — allocate grid
- *   engine_get_cells()                — pointer → Uint8Array in WASM memory
- *   engine_set_pixel(x, y, type)      — paint a single cell
- *   engine_update()                   — advance simulation one tick
- *   engine_load_config(jsonStr)       — load entities + rules from JSON
- *   engine_set_seed(seed)             — reset deterministic RNG seed
+ *   engine_init(w, h)                        — allocate grid
+ *   engine_get_cells()                        — pointer → Uint8Array in WASM memory
+ *   engine_set_pixel(x, y, type)              — paint a single cell
+ *   engine_update()                           — advance simulation one tick
+ *   engine_load_config(jsonStr)               — load entities + rules from JSON
+ *   engine_set_seed(seed)                     — reset deterministic RNG seed
+ *   engine_send_click(x, y)                   — fire OnClick rules for cell at (x, y)
+ *   engine_set_button_state(key, isDown)       — set held direction key (0=up,1=down,2=left,3=right)
+ *   engine_get_score()                        — get current game score
+ *   engine_get_game_state()                   — 0=idle, 1=active, 2=ended
+ *   engine_reset_game()                       — reset score and game state to idle
  */
 
 #include <emscripten.h>
@@ -67,6 +72,41 @@ int engine_load_config(const char* json) {
 EMSCRIPTEN_KEEPALIVE
 void engine_set_seed(uint32_t seed) {
     rng_seed(seed);
+}
+
+/** Fire OnClick rules for the cell at (x, y). Called when user clicks in navigate mode. */
+EMSCRIPTEN_KEEPALIVE
+void engine_send_click(int x, int y) {
+    processClickAt(x, y);
+}
+
+/** Set or release a direction button. key: 0=up, 1=down, 2=left, 3=right. */
+EMSCRIPTEN_KEEPALIVE
+void engine_set_button_state(int key, int isDown) {
+    setButtonState(key, isDown != 0);
+}
+
+/** Returns the current game score. */
+EMSCRIPTEN_KEEPALIVE
+int engine_get_score() {
+    return getScore();
+}
+
+/**
+ * Returns the current game state:
+ *   0 = idle (no active game)
+ *   1 = active (game in progress)
+ *   2 = ended (game over — UI should show end screen)
+ */
+EMSCRIPTEN_KEEPALIVE
+int engine_get_game_state() {
+    return getGameState();
+}
+
+/** Reset score to 0 and game state to idle. */
+EMSCRIPTEN_KEEPALIVE
+void engine_reset_game() {
+    resetGame();
 }
 
 } // extern "C"

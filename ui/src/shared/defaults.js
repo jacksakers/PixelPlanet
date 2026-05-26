@@ -250,11 +250,13 @@ export const CONDITION_TYPES = [
 export const ACTION_TYPES = [
   'Move', 'MoveFirst', 'Transform', 'Spawn', 'Destroy', 'ModifyVariable',
   'Eat', 'EatFirst', 'Swap', 'SwapFirst', 'MoveToward', 'MoveAway',
+  'AddScore', 'SetScore', 'StartGame', 'EndGame',
 ];
 
 export const PROPERTY_OPS = ['<', '<=', '==', '!=', '>', '>='];
 export const BUILT_IN_PROPS = ['density'];
-export const TRIGGERS = ['OnTick', 'OnRandomTick'];
+export const TRIGGERS = ['OnTick', 'OnRandomTick', 'OnClick', 'OnButtonPress'];
+export const BUTTON_KEYS = ['up', 'down', 'left', 'right'];
 
 export const MODIFY_OPS = [
   { value: '+=',  label: 'Add (+)' },

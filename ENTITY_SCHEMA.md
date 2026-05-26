@@ -1,6 +1,6 @@
 # PixelPlanet — Entity & Rule Schema Reference
 
-> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-19 03:23 UTC.
+> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-26 16:21 UTC.
 > Re-run to pick up new condition types, actions, or triggers added to the codebase.
 
 ## Source file status
@@ -53,6 +53,7 @@ is entirely doable by composing the primitives below.
   "color": "[R, G, B, A]  // 0–255 each",
   "density": "number  // >0 = participates in gravity; 0 = floats/is static",
   "isStatic": "boolean  // true = never evaluated, immovable (e.g. Stone)",
+  "lifespan": "number (0–65535)  // 0 = immortal; >0 = cell auto-dies after this many ticks",
   "variables": [
     {
       "name": "string  // identifier used in VariableCheck / ModifyVariable",
@@ -99,6 +100,8 @@ Available values for the `trigger` field:
 |---------|-------------|
 | `OnTick` | Fires every simulation tick (~60 times/second). Use for continuous physics. |
 | `OnRandomTick` | Fires on a random interval. Use for slow, stochastic changes (decay, spreading fire). Add `"interval": <ticks>` to set average cadence. |
+| `OnClick` | Fires once when the user clicks or taps the cell while the **Navigate** tool mode is active (toolMode = `none`). Add `"button"` field to specify a key for button-press rules. Useful for interactive entities: buttons, doors, collectibles. |
+| `OnButtonPress` | Fires every tick while a specified direction key is held. Add `"button": "up"|"down"|"left"|"right"` to the rule. Arrow keys on desktop; on-screen D-pad on mobile (auto-shown when any rule uses this trigger). Use to build player-controlled entities. |
 
 ---
 
@@ -453,6 +456,62 @@ Same scanning logic as MoveToward but moves one step **away** from the nearest m
 
 ---
 
+### `AddScore`
+
+Adds `val` to the global score counter. Only has effect while the game is active (after `StartGame` and before `EndGame`). Use this in rules that fire when the player achieves something — collecting an item, eating an enemy, etc.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `val` | `number` | Amount to add to the score. Can be negative. Default 1. |
+
+**Example:**
+```json
+{ "type": "AddScore", "val": 10 }
+```
+
+---
+
+### `SetScore`
+
+Sets the global score counter to an absolute value. Only has effect while the game is active.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `val` | `number` | New score value. Default 0. |
+
+**Example:**
+```json
+{ "type": "SetScore", "val": 0 }
+```
+
+---
+
+### `StartGame`
+
+Resets the score to 0 and marks the game as **active**. While active, `AddScore` and `SetScore` actions accumulate points and the score badge is visible in the UI. Typically placed on a "Start" button entity with an `OnClick` trigger.
+
+_No additional fields required._
+
+**Example:**
+```json
+{ "type": "StartGame" }
+```
+
+---
+
+### `EndGame`
+
+Ends the current game session. The UI shows a "Game Over" overlay with the final score. The game stays in ended state until the player clicks Restart (which calls `engine_reset_game()`). Has no effect if the game is not currently active.
+
+_No additional fields required._
+
+**Example:**
+```json
+{ "type": "EndGame" }
+```
+
+---
+
 ## Directions
 
 Valid string values for any `dir` or `dirs` field:
@@ -525,6 +584,10 @@ or `parser.cpp` alongside this document.
 - `ACTION_SWAP_FIRST` — Try each dir; swap with first matching target
 - `ACTION_MOVE_TOWARD` — Scan surroundings; move one step toward nearest matching cell
 - `ACTION_MOVE_AWAY` — Scan surroundings; move one step away from nearest matching cell
+- `ACTION_ADD_SCORE` — Add a value to the global score counter
+- `ACTION_SET_SCORE` — Set the global score counter to a fixed value
+- `ACTION_START_GAME` — Reset score to 0 and mark game as active
+- `ACTION_END_GAME` — Mark game as ended (triggers end-screen in UI)
 
 ---
 

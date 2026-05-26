@@ -89,6 +89,10 @@ const ACTION_DEFAULTS = {
   SwapFirst:      { type: 'SwapFirst', dirs: ['down'], target: 'ANY', randomize: true },
   MoveToward:     { type: 'MoveToward', target: 'ANY', range: 5 },
   MoveAway:       { type: 'MoveAway', target: 'ANY', range: 5 },
+  AddScore:       { type: 'AddScore', val: 1 },
+  SetScore:       { type: 'SetScore', val: 0 },
+  StartGame:      { type: 'StartGame' },
+  EndGame:        { type: 'EndGame' },
 };
 
 export default function ActionEditor({ action, onChange, onDelete, entityId }) {
@@ -314,6 +318,33 @@ export default function ActionEditor({ action, onChange, onDelete, entityId }) {
             onChange={(e) => set({ range: Math.max(1, parseInt(e.target.value) || 1) })}
           />
         </>
+      )}
+
+      {/* AddScore / SetScore — score value */}
+      {(action.type === 'AddScore' || action.type === 'SetScore') && (
+        <>
+          <span style={{ fontSize: '0.74rem', color: '#888' }}>
+            {action.type === 'AddScore' ? 'by' : 'to'}
+          </span>
+          <input
+            style={{ ...S.sel, width: 72 }}
+            type="number"
+            step="1"
+            value={action.val ?? (action.type === 'AddScore' ? 1 : 0)}
+            onChange={(e) => set({ val: parseFloat(e.target.value) || 0 })}
+          />
+          <span style={{ fontSize: '0.68rem', color: '#556', fontStyle: 'italic' }}>pts</span>
+        </>
+      )}
+
+      {/* StartGame — no extra params, just an info label */}
+      {action.type === 'StartGame' && (
+        <span style={{ fontSize: '0.72rem', color: '#6a8', fontStyle: 'italic' }}>resets score &amp; starts game loop</span>
+      )}
+
+      {/* EndGame — no extra params */}
+      {action.type === 'EndGame' && (
+        <span style={{ fontSize: '0.72rem', color: '#a68', fontStyle: 'italic' }}>ends game &amp; shows final score</span>
       )}
 
       <button style={S.delBtn} onClick={onDelete}>✕</button>

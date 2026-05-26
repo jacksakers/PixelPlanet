@@ -255,6 +255,20 @@ static Action parseAction(const nlohmann::json& j) {
         if (j.contains("target"))
             a.senseTarget = resolveTarget(j["target"]);
     }
+    else if (type == "AddScore") {
+        a.type     = ACTION_ADD_SCORE;
+        a.scoreVal = j.value("val", 1.0f);
+    }
+    else if (type == "SetScore") {
+        a.type     = ACTION_SET_SCORE;
+        a.scoreVal = j.value("val", 0.0f);
+    }
+    else if (type == "StartGame") {
+        a.type = ACTION_START_GAME;
+    }
+    else if (type == "EndGame") {
+        a.type = ACTION_END_GAME;
+    }
 
     return a;
 }
@@ -270,6 +284,15 @@ static Rule parseRule(const nlohmann::json& j) {
     if (trig == "OnRandomTick") {
         r.trigger            = TRIGGER_ON_RANDOM_TICK;
         r.randomTickInterval = j.value("interval", 60);
+    } else if (trig == "OnClick") {
+        r.trigger = TRIGGER_ON_CLICK;
+    } else if (trig == "OnButtonPress") {
+        r.trigger = TRIGGER_ON_BUTTON_PRESS;
+        std::string key = j.value("button", "up");
+        if      (key == "up")    r.buttonKey = BUTTON_UP;
+        else if (key == "down")  r.buttonKey = BUTTON_DOWN;
+        else if (key == "left")  r.buttonKey = BUTTON_LEFT;
+        else if (key == "right") r.buttonKey = BUTTON_RIGHT;
     }
 
     r.condition = j.contains("condition")

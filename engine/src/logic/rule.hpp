@@ -80,6 +80,9 @@ struct Action {
     // move one step toward (or away from) the nearest cell matching senseTarget.
     int  senseTarget = TARGET_ANY;  // TARGET_EMPTY | TARGET_ANY | entity ID
     int  senseRange  = 5;           // how many cells to scan along each ray (1–32)
+
+    // ACTION_ADD_SCORE / ACTION_SET_SCORE
+    float scoreVal = 1.0f;  // value to add or set
 };
 
 // ---------------------------------------------------------------------------
@@ -89,6 +92,7 @@ struct Rule {
     std::string id;
     TriggerType trigger            = TRIGGER_ON_TICK;
     int         randomTickInterval = 60;  // used only for TRIGGER_ON_RANDOM_TICK
+    int         buttonKey          = 0;   // used only for TRIGGER_ON_BUTTON_PRESS (0=up,1=down,2=left,3=right)
     Condition   condition;
     std::vector<Action> actions;
 };

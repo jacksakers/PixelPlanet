@@ -174,7 +174,7 @@ export default function MobileHUD({
           })}
         </div>
 
-        {/* Tool mode: paint / fill / eyedropper (icons only) */}
+        {/* Tool mode: paint / fill / eyedropper / navigate (icons only) */}
         <button
           style={{ ...S.iconBtn, fontSize: '0.95rem', background: toolMode === 'paint' ? '#2d2d44' : 'none', border: toolMode === 'paint' ? '1px solid #5566aa' : '1px solid #3a3a55' }}
           onClick={() => onSetToolMode?.('paint')}
@@ -186,10 +186,10 @@ export default function MobileHUD({
           title="Flood fill"
         >🪣</button>
         <button
-          style={{ ...S.iconBtn, fontSize: '0.95rem', background: toolMode === 'eyedropper' ? '#2d2d44' : 'none', border: toolMode === 'eyedropper' ? '1px solid #5566aa' : '1px solid #3a3a55' }}
-          onClick={() => onSetToolMode?.('eyedropper')}
-          title="Eyedropper"
-        >🔍</button>
+          style={{ ...S.iconBtn, fontSize: '0.95rem', background: toolMode === 'none' ? '#2d2d44' : 'none', border: toolMode === 'none' ? '1px solid #5566aa' : '1px solid #3a3a55' }}
+          onClick={() => onSetToolMode?.(toolMode === 'none' ? 'paint' : 'none')}
+          title="Navigate (no painting; taps fire OnClick rules)"
+        >🧭</button>
 
       </div>
 

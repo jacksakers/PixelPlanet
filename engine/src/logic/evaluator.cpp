@@ -31,8 +31,18 @@
 namespace pp {
 
 // ---------------------------------------------------------------------------
-// Condition evaluation
+// Game / score / button global state
 // ---------------------------------------------------------------------------
+static int  g_score     = 0;          // accumulated score
+static int  g_gameState = 0;          // 0=idle, 1=active, 2=ended
+static bool g_buttons[4] = {};        // held direction buttons (0=up,1=down,2=left,3=right)
+
+int  getScore()     { return g_score; }
+int  getGameState() { return g_gameState; }
+void resetGame()    { g_score = 0; g_gameState = 0; }
+void setButtonState(int key, bool pressed) {
+    if (key >= 0 && key < 4) g_buttons[key] = pressed;
+}
 
 static bool evalCondition(const Condition& c, int x, int y, uint8_t cellId);
 
@@ -425,6 +435,23 @@ static bool execAction(int x, int y, const Action& a) {
             }
             return tryMove(x, y, moveDir);
         }
+
+        case ACTION_ADD_SCORE:
+            if (g_gameState == 1) g_score += static_cast<int>(a.scoreVal);
+            return true;
+
+        case ACTION_SET_SCORE:
+            if (g_gameState == 1) g_score = static_cast<int>(a.scoreVal);
+            return true;
+
+        case ACTION_START_GAME:
+            g_score = 0;
+            g_gameState = 1;
+            return true;
+
+        case ACTION_END_GAME:
+            if (g_gameState == 1) g_gameState = 2;
+            return true;
     }
     return false;
 }
@@ -457,6 +484,37 @@ static bool execRule(const Rule& rule, int x, int y, uint8_t cellId, bool* moved
 }
 
 // ---------------------------------------------------------------------------
+// processClickAt — fire OnClick rules for a single cell immediately.
+// Called from engine_send_click when user interacts in navigate tool mode.
+// ---------------------------------------------------------------------------
+void processClickAt(int x, int y) {
+    if (!g_grid.read || !g_grid.valid(x, y)) return;
+
+    // Sync write buffer with the current read state so execRule has a valid context.
+    memcpy(g_grid.write,      g_grid.read,      static_cast<size_t>(g_grid.size));
+    memcpy(g_grid.vars_write, g_grid.vars_read, static_cast<size_t>(g_grid.size) * NUM_VARS_PER_CELL * sizeof(uint16_t));
+    memset(g_grid.dirty,      0,                static_cast<size_t>(g_grid.size) * sizeof(bool));
+
+    uint8_t cellId = g_grid.read[g_grid.idx(x, y)];
+    if (cellId == EMPTY_ID) return;
+
+    // Global OnClick rules.
+    for (const auto& rule : g_ruleSet.globalRules) {
+        if (rule.trigger != TRIGGER_ON_CLICK) continue;
+        execRule(rule, x, y, cellId);
+    }
+    // Entity-specific OnClick rules.
+    for (const auto& [eid, rule] : g_ruleSet.entityRules) {
+        if (eid != static_cast<int>(cellId)) continue;
+        if (rule.trigger != TRIGGER_ON_CLICK) continue;
+        if (g_grid.write[g_grid.idx(x, y)] == EMPTY_ID) break;
+        execRule(rule, x, y, cellId);
+    }
+
+    g_grid.swapBuffers();
+}
+
+// ---------------------------------------------------------------------------
 // Public tick entry point
 // ---------------------------------------------------------------------------
 void evaluateTick() {
@@ -483,17 +541,22 @@ void evaluateTick() {
             // Skip static entities (stone, etc.)
             const EntityDef* def = g_entityRegistry.get(static_cast<int>(cellId));
             if (def && def->isStatic) continue;
-            
+
             // ------------------------------------------------------------------
-            // 1. Global rules — e.g., gravity applies to everything with density > 0
+            // 1. Global rules — OnTick/OnRandomTick only (skip click/button here).
             // ------------------------------------------------------------------
             bool moved = false;
             for (const auto& rule : g_ruleSet.globalRules) {
+                if (rule.trigger == TRIGGER_ON_CLICK) continue;
+                if (rule.trigger == TRIGGER_ON_BUTTON_PRESS) {
+                    if (rule.buttonKey < 0 || rule.buttonKey > 3) continue;
+                    if (!g_buttons[rule.buttonKey]) continue;
+                }
                 if (execRule(rule, x, y, cellId)) { moved = true; break; }
             }
 
             // ------------------------------------------------------------------
-            // 2. Entity-specific rules — diagonal spread, sideways flow, etc.
+            // 2. Entity-specific rules — OnTick, OnButtonPress, skip OnClick.
             // All non-movement rules are allowed to fire in the same tick.
             // We only stop if a movement action moves the cell away.
             // ------------------------------------------------------------------
@@ -502,6 +565,12 @@ void evaluateTick() {
                     if (eid != static_cast<int>(cellId)) continue;
                     // Stop if a previous rule destroyed this cell.
                     if (g_grid.write[g_grid.idx(x, y)] == EMPTY_ID) break;
+                    // Trigger filter.
+                    if (rule.trigger == TRIGGER_ON_CLICK) continue;
+                    if (rule.trigger == TRIGGER_ON_BUTTON_PRESS) {
+                        if (rule.buttonKey < 0 || rule.buttonKey > 3) continue;
+                        if (!g_buttons[rule.buttonKey]) continue;
+                    }
                     bool cellMoved = false;
                     execRule(rule, x, y, cellId, &cellMoved);
                     if (cellMoved) break;
