@@ -26,8 +26,6 @@ Name: String (e.g., "Fire").
 
 Color/Texture: Hex code or simple noise pattern.
 
-Density/Weight: Float (determines what sinks/floats globally).
-
 States/Variables: A dictionary of user-defined variables (e.g., lifetime: 60, energy: 100, isBouyant: true).
 
 4. The Rule Engine (The Logic Sandbox)

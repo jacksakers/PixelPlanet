@@ -18,7 +18,7 @@ Phase 2: The Data-Driven Engine
 
 Goal: Remove hardcoded physics. Make the engine read rules from JSON.
 
-Entity Schema: Define the JSON structure for an "Entity" (Properties like color, density).
+Entity Schema: Define the JSON structure for an "Entity" (Properties like color).
 
 Rule AST Parser: Write a parser in WASM that can read a JSON rule object and convert it into an executable function/pointer.
 

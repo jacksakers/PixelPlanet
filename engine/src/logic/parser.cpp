@@ -6,7 +6,7 @@
  *
  * JSON schema (top-level):
  * {
- *   "entities":    [ { id, name, color:[r,g,b,a], density, isStatic }, ... ],
+ *   "entities":    [ { id, name, color:[r,g,b,a], isStatic }, ... ],
  *   "globalRules": [ <Rule>, ... ],
  *   "entityRules": { "<id>": [ <Rule>, ... ], ... }
  * }
@@ -18,7 +18,6 @@
  * Condition schema:
  * { "type": "Always"|"NeighborCheck"|"PropertyCheck"|"Chance"|"AND"|"OR"|"NOT",
  *   -- NeighborCheck: "dir": "<dir>", "target": "EMPTY"|"ANY"|<entityId>
- *   -- PropertyCheck: "prop": "density", "op": "<|<=|==|!=|>|>=", "val": <number>
  *   -- Chance:        "val": <0-100>
  *   -- AND|OR:        "children": [ <Condition>, ... ]
  *   -- NOT:           "child": <Condition>

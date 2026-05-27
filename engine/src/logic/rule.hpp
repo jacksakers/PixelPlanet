@@ -18,7 +18,7 @@ struct Condition {
     int neighborTarget = TARGET_EMPTY;  // TARGET_EMPTY | TARGET_ANY | entity ID
 
     // COND_PROPERTY
-    std::string propName;  // "density"
+    std::string propName;  // name of the entity property to check
     std::string propOp;    // "<" | "<=" | "==" | "!=" | ">" | ">="
     float       propVal = 0.0f;
 
