@@ -21,6 +21,7 @@ import {
   DEFAULT_ENTITIES,
   DEFAULT_GLOBAL_RULES,
   DEFAULT_ENTITY_RULES,
+  DEFAULT_SPRITES,
   saveToStorage,
   loadFromStorage,
 } from '../shared/defaults.js';
@@ -40,12 +41,14 @@ function loadInitialState() {
       entities:    saved.entities    ?? DEFAULT_ENTITIES,
       globalRules: saved.globalRules ?? DEFAULT_GLOBAL_RULES,
       entityRules: saved.entityRules ?? DEFAULT_ENTITY_RULES,
+      sprites:     saved.sprites     ?? DEFAULT_SPRITES,
     };
   }
   return {
     entities:    DEFAULT_ENTITIES,
     globalRules: DEFAULT_GLOBAL_RULES,
     entityRules: DEFAULT_ENTITY_RULES,
+    sprites:     DEFAULT_SPRITES,
   };
 }
 
@@ -106,6 +109,7 @@ function reducer(state, action) {
         entities:    action.entities    ?? state.entities,
         globalRules: action.globalRules ?? state.globalRules,
         entityRules: action.entityRules ?? state.entityRules,
+        sprites:     action.sprites     ?? state.sprites,
       };
 
     case 'MERGE_IMPORT':
@@ -122,7 +126,23 @@ function reducer(state, action) {
         entities:    DEFAULT_ENTITIES,
         globalRules: DEFAULT_GLOBAL_RULES,
         entityRules: DEFAULT_ENTITY_RULES,
+        sprites:     DEFAULT_SPRITES,
       };
+
+    // ── Sprites ─────────────────────────────────────────────────────────────
+    case 'SPRITE_ADD':
+      return { ...state, sprites: [...state.sprites, action.sprite] };
+
+    case 'SPRITE_UPDATE':
+      return {
+        ...state,
+        sprites: state.sprites.map((s) =>
+          s.id === action.sprite.id ? { ...s, ...action.sprite } : s,
+        ),
+      };
+
+    case 'SPRITE_DELETE':
+      return { ...state, sprites: state.sprites.filter((s) => s.id !== action.id) };
 
     // ── Entity Rules ────────────────────────────────────────────────────────
     case 'ENTITY_RULE_ADD': {
@@ -230,8 +250,8 @@ export function SimProvider({ children }) {
 
   // Auto-save to localStorage whenever config changes.
   useEffect(() => {
-    saveToStorage(state.entities, state.globalRules, state.entityRules);
-  }, [state.entities, state.globalRules, state.entityRules]);
+    saveToStorage(state.entities, state.globalRules, state.entityRules, state.sprites);
+  }, [state.entities, state.globalRules, state.entityRules, state.sprites]);
 
   // Stable action creators — never recreated after mount.
   const actions = useMemo(() => ({
@@ -251,6 +271,9 @@ export function SimProvider({ children }) {
     resetDefaults:      ()                    => dispatch({ type: 'RESET_DEFAULTS' }),
     undo:               ()                    => dispatch({ type: 'UNDO' }),
     redo:               ()                    => dispatch({ type: 'REDO' }),
+    addSprite:          (sprite)              => dispatch({ type: 'SPRITE_ADD',           sprite }),
+    updateSprite:       (sprite)              => dispatch({ type: 'SPRITE_UPDATE',        sprite }),
+    deleteSprite:       (id)                  => dispatch({ type: 'SPRITE_DELETE',        id }),
   }), []);
 
   // Pre-built RGBA color table: colorTable[id * 4 .. id * 4 + 3] = [r, g, b, a]

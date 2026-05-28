@@ -3,15 +3,18 @@
  *
  * Two-section panel for cloud pack sharing:
  *
- *   ▸ Share — POST current config to /api/save, display the generated
- *             short code (X-XXXX) with a one-click copy button.
+ *   ▸ Share  — POST current config to /api/save with an optional title.
+ *              Displays the generated short code (X-XXXX) with a copy button.
  *
- *   ▸ Load  — Enter a short code, GET /api/load?code=, import the
- *             returned pack into the running simulation.
+ *   ▸ Load   — Enter a short code, GET /api/load?code=, import the pack.
+ *
+ *   ▸ Browse — GET /api/browse to see community packs sorted by recency,
+ *              with one-click load.
  */
 
-import { useState } from 'react';
-import { useSimContext } from '../store/SimContext.jsx';
+import { useState }         from 'react';
+import { useSimContext }     from '../store/SimContext.jsx';
+import PackBrowser           from './PackBrowser.jsx';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const S = {
@@ -121,9 +124,10 @@ async function copyToClipboard(text) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ShareManager() {
-  const { entities, globalRules, entityRules, importConfig } = useSimContext();
+  const { entities, globalRules, entityRules, sprites, importConfig } = useSimContext();
 
   // ── Share state ──────────────────────────────────────────────────────────
+  const [shareTitle,    setShareTitle]    = useState('');
   const [shareLoading,  setShareLoading]  = useState(false);
   const [shareCode,     setShareCode]     = useState('');    // last generated code
   const [shareStatus,   setShareStatus]   = useState(null);  // { ok, msg }
@@ -134,6 +138,9 @@ export default function ShareManager() {
   const [loadLoading,   setLoadLoading]   = useState(false);
   const [loadStatus,    setLoadStatus]    = useState(null);  // { ok, msg }
 
+  // ── Browse state ─────────────────────────────────────────────────────────
+  const [showBrowse, setShowBrowse] = useState(false);
+
   // ── Share handler ────────────────────────────────────────────────────────
 
   async function handleShare() {
@@ -143,8 +150,10 @@ export default function ShareManager() {
     setCopied(false);
 
     try {
-      const payload = JSON.stringify({ entities, globalRules, entityRules });
-      const res     = await fetch('/api/save', {
+      const packData = { entities, globalRules, entityRules, sprites: sprites ?? [] };
+      const title    = shareTitle.trim() || 'Untitled Pack';
+      const payload  = JSON.stringify({ title, pack: packData });
+      const res      = await fetch('/api/save', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    payload,
@@ -179,11 +188,11 @@ export default function ShareManager() {
     }
   }
 
-  // ── Load handler ─────────────────────────────────────────────────────────
+  // ── Load by code handler ──────────────────────────────────────────────────
 
-  async function handleLoad() {
-    const code = loadInput.trim().toUpperCase();
-    if (!code) {
+  async function handleLoad(code) {
+    const normalized = (code || loadInput).trim().toUpperCase();
+    if (!normalized) {
       setLoadStatus({ ok: false, msg: 'Enter a code first' });
       return;
     }
@@ -192,7 +201,7 @@ export default function ShareManager() {
     setLoadStatus(null);
 
     try {
-      const res  = await fetch(`/api/load?code=${encodeURIComponent(code)}`);
+      const res  = await fetch(`/api/load?code=${encodeURIComponent(normalized)}`);
       const json = await res.json();
 
       if (!res.ok) {
@@ -210,10 +219,12 @@ export default function ShareManager() {
         entities:    json.entities,
         globalRules: json.globalRules ?? [],
         entityRules: json.entityRules ?? {},
+        sprites:     json.sprites     ?? [],
       });
 
-      setLoadStatus({ ok: true, msg: `Pack "${code}" loaded!` });
+      setLoadStatus({ ok: true, msg: `Pack "${normalized}" loaded!` });
       setLoadInput('');
+      setShowBrowse(false);
     } catch (err) {
       setLoadStatus({ ok: false, msg: `Network error: ${err.message}` });
     } finally {
@@ -226,13 +237,23 @@ export default function ShareManager() {
       <span style={S.title}>Cloud Sharing</span>
 
       {/* ── Share section ─────────────────────────────────────────────────── */}
-      <button
-        style={S.btn('primary')}
-        onClick={handleShare}
-        disabled={shareLoading}
-      >
-        {shareLoading ? 'Uploading…' : '☁ Share current pack'}
-      </button>
+      <div style={S.row}>
+        <input
+          style={{ ...S.inp, textTransform: 'none', letterSpacing: 'normal', fontFamily: 'inherit' }}
+          value={shareTitle}
+          onChange={(e) => setShareTitle(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleShare(); }}
+          placeholder="Pack title (optional)…"
+          maxLength={80}
+        />
+        <button
+          style={S.btn('primary')}
+          onClick={handleShare}
+          disabled={shareLoading}
+        >
+          {shareLoading ? 'Uploading…' : '☁ Share'}
+        </button>
+      </div>
 
       {shareCode && (
         <div style={S.codeDisplay}>
@@ -249,14 +270,14 @@ export default function ShareManager() {
 
       {shareCode && (
         <span style={S.hint}>
-          Anyone with this code can load your pack from the Load section below,
-          or visit <code>?pack={shareCode}</code> to auto-load it.
+          Share the code above — anyone can load it from the field below
+          or visit <code style={{ fontSize: '0.68rem' }}>?pack={shareCode}</code>.
         </span>
       )}
 
       <div style={S.divider} />
 
-      {/* ── Load section ──────────────────────────────────────────────────── */}
+      {/* ── Load by code ──────────────────────────────────────────────────── */}
       <div style={S.row}>
         <input
           style={S.inp}
@@ -270,7 +291,7 @@ export default function ShareManager() {
         />
         <button
           style={S.btn()}
-          onClick={handleLoad}
+          onClick={() => handleLoad()}
           disabled={loadLoading}
         >
           {loadLoading ? 'Loading…' : 'Load'}
@@ -279,6 +300,26 @@ export default function ShareManager() {
 
       {loadStatus && (
         <span style={S.status(loadStatus.ok)}>{loadStatus.msg}</span>
+      )}
+
+      <div style={S.divider} />
+
+      {/* ── Browse community packs ────────────────────────────────────────── */}
+      <button
+        style={{
+          ...S.btn(),
+          alignSelf: 'flex-start',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+        }}
+        onClick={() => setShowBrowse((v) => !v)}
+      >
+        {showBrowse ? '▲ Hide Community Packs' : '▼ Browse Community Packs'}
+      </button>
+
+      {showBrowse && (
+        <PackBrowser onLoad={handleLoad} />
       )}
     </div>
   );

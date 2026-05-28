@@ -134,8 +134,9 @@ export default function MobileHUD({
   onClear,
   onOpenEditor,
   toolMode = 'paint', onSetToolMode,
+  selectedSprite, onSelectSprite,
 }) {
-  const { entities } = useSimContext();
+  const { entities, sprites } = useSimContext();
 
   const tools = [
     ...entities.map((e) => ({
@@ -143,8 +144,9 @@ export default function MobileHUD({
       label:   e.name,
       color:   `rgba(${e.color[0]},${e.color[1]},${e.color[2]},${(e.color[3] ?? 255) / 255})`,
       isErase: false,
+      isSprite: false,
     })),
-    { type: PIXEL_EMPTY, label: 'Erase', color: '#222233', isErase: true },
+    { type: PIXEL_EMPTY, label: 'Erase', color: '#222233', isErase: true, isSprite: false },
   ];
 
   return (
@@ -159,16 +161,72 @@ export default function MobileHUD({
         {/* Entity swatches — horizontal scroll */}
         <div style={S.swatchScroll}>
           {tools.map(({ type, label, color, isErase }) => {
-            const active = selectedType === type;
+            const active = toolMode !== 'sprite' && selectedType === type;
             return (
               <button
                 key={type}
                 style={S.swatchBtn(active, color)}
-                onClick={() => onSelectType(type)}
+                onClick={() => {
+                  onSelectType(type);
+                  onSelectSprite?.(null);
+                }}
                 title={label}
               >
                 <span style={S.swatchDot(color, isErase)} />
                 <span style={S.swatchLabel(active)}>{label}</span>
+              </button>
+            );
+          })}
+
+          {/* Sprite swatches */}
+          {sprites?.length > 0 && sprites.map((sprite) => {
+            const active = toolMode === 'sprite' && selectedSprite?.id === sprite.id;
+            // Use the color of the first non-empty entity in the sprite as the swatch color
+            const firstId = sprite.cells.find((c) => c !== 0);
+            const firstEntity = firstId ? entities.find((e) => e.id === firstId) : null;
+            const color = firstEntity
+              ? `rgba(${firstEntity.color[0]},${firstEntity.color[1]},${firstEntity.color[2]},${firstEntity.color[3] / 255})`
+              : '#445566';
+            return (
+              <button
+                key={sprite.id}
+                style={{
+                  ...S.swatchBtn(active, active ? '#5566aa' : color),
+                  border: `1px solid ${active ? '#5566aa' : '#2a4060'}`,
+                }}
+                onClick={() => {
+                  if (active) {
+                    onSelectSprite?.(null);
+                    onSetToolMode?.('paint');
+                  } else {
+                    onSelectSprite?.(sprite);
+                    onSetToolMode?.('sprite');
+                  }
+                }}
+                title={`Sprite: ${sprite.name}`}
+              >
+                {/* 4×4 mini grid preview */}
+                <div style={{
+                  width: 22,
+                  height: 22,
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.min(sprite.width, 4)}, 1fr)`,
+                  gridTemplateRows:    `repeat(${Math.min(sprite.height, 4)}, 1fr)`,
+                  background: '#1a1a28',
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                  border: active ? '1px solid #5566aa' : '1px solid #2a2a3a',
+                  flexShrink: 0,
+                }}>
+                  {sprite.cells.slice(0, 16).map((id, i) => {
+                    const entity = entities.find((e) => e.id === id);
+                    const bg = entity
+                      ? `rgba(${entity.color[0]},${entity.color[1]},${entity.color[2]},${entity.color[3] / 255})`
+                      : 'transparent';
+                    return <div key={i} style={{ background: bg }} />;
+                  })}
+                </div>
+                <span style={S.swatchLabel(active)}>{sprite.name}</span>
               </button>
             );
           })}

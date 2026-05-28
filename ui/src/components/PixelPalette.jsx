@@ -130,8 +130,8 @@ const S = {
   }),
 };
 
-export default function PixelPalette({ selectedType, onSelectType, brushSize, onBrushSize, toolMode = 'paint', onSetToolMode }) {
-  const { entities } = useSimContext();
+export default function PixelPalette({ selectedType, onSelectType, brushSize, onBrushSize, toolMode = 'paint', onSetToolMode, selectedSprite, onSelectSprite }) {
+  const { entities, sprites } = useSimContext();
 
   const tools = [
     {
@@ -158,9 +158,8 @@ export default function PixelPalette({ selectedType, onSelectType, brushSize, on
       </div>
 
       <div style={S.list}>
-        {tools.map(({ type, label, color, key, isErase }, idx) => {
+        {tools.map(({ type, label, color, key, isErase }) => {
           const active = selectedType === type;
-          // Divider before eraser
           return (
             <div key={type}>
               {isErase && <div style={S.divider} />}
@@ -176,6 +175,75 @@ export default function PixelPalette({ selectedType, onSelectType, brushSize, on
             </div>
           );
         })}
+
+        {/* ── Sprites ── */}
+        {sprites?.length > 0 && (
+          <>
+            <div style={{ ...S.divider, margin: '6px 0 2px' }} />
+            <div style={{
+              fontSize: '0.65rem',
+              letterSpacing: '0.1em',
+              color: '#445',
+              fontWeight: 600,
+              padding: '2px 4px 4px',
+            }}>
+              SPRITES
+            </div>
+            {sprites.map((sprite) => {
+              const active = toolMode === 'sprite' && selectedSprite?.id === sprite.id;
+              const previewCols = Math.min(sprite.width, 8);
+              const previewRows = Math.min(sprite.height, 8);
+              const cellsPreview = [];
+              for (let r = 0; r < previewRows; r++) {
+                for (let c = 0; c < previewCols; c++) {
+                  cellsPreview.push(sprite.cells[r * sprite.width + c] ?? 0);
+                }
+              }
+              const cellPx = Math.floor(28 / Math.max(previewCols, previewRows));
+              const previewSize = cellPx * Math.max(previewCols, previewRows);
+              return (
+                <div
+                  key={sprite.id}
+                  style={S.item(active, '#5566aa')}
+                  onClick={() => {
+                    if (active) {
+                      onSelectSprite?.(null);
+                      onSetToolMode?.('paint');
+                    } else {
+                      onSelectSprite?.(sprite);
+                      onSetToolMode?.('sprite');
+                    }
+                  }}
+                  title={`${sprite.name}  ${sprite.width}×${sprite.height} — click to stamp`}
+                >
+                  {/* Grid preview */}
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 3,
+                    background: '#0d0d1a',
+                    border: '1px solid #2a2a3a',
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${previewCols}, ${cellPx}px)`,
+                    gridTemplateRows: `repeat(${previewRows}, ${cellPx}px)`,
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                  }}>
+                    {cellsPreview.map((id, i) => {
+                      const entity = entities.find((e) => e.id === id);
+                      const bg = entity
+                        ? `rgba(${entity.color[0]},${entity.color[1]},${entity.color[2]},${entity.color[3] / 255})`
+                        : 'transparent';
+                      return <div key={i} style={{ background: bg }} />;
+                    })}
+                  </div>
+                  <span style={S.itemName(active)}>{sprite.name}</span>
+                  <span style={S.keyHint}>{sprite.width}×{sprite.height}</span>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       {/* Brush size */}

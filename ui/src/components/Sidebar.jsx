@@ -9,9 +9,11 @@ import { useState } from 'react';
 import EntityManager from './EntityManager/index.jsx';
 import RuleManager   from './RuleManager/index.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
+import SpriteManager from './SpriteManager/index.jsx';
 
 const TAB_ENTITIES = 'entities';
 const TAB_RULES    = 'rules';
+const TAB_SPRITES  = 'sprites';
 const TAB_SETTINGS = 'settings';
 
 const WIDTH = 360;
@@ -87,7 +89,7 @@ const S = {
   },
 };
 
-export default function Sidebar({ selectedType, onSelectType, isMobile = false, onClose }) {
+export default function Sidebar({ selectedType, onSelectType, selectedSprite, onSelectSprite, isMobile = false, onClose }) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState(TAB_ENTITIES);
 
@@ -128,11 +130,13 @@ export default function Sidebar({ selectedType, onSelectType, isMobile = false, 
           <div style={S.tabs}>
             <button style={S.tab(tab === TAB_ENTITIES)} onClick={() => setTab(TAB_ENTITIES)}>Entities</button>
             <button style={S.tab(tab === TAB_RULES)}    onClick={() => setTab(TAB_RULES)}>Rules</button>
+            <button style={S.tab(tab === TAB_SPRITES)}  onClick={() => setTab(TAB_SPRITES)}>Sprites</button>
             <button style={S.tab(tab === TAB_SETTINGS)} onClick={() => setTab(TAB_SETTINGS)}>⚙</button>
           </div>
           <div style={S.content}>
             {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} onSelectType={onSelectType} />}
             {tab === TAB_RULES    && <RuleManager selectedType={selectedType} />}
+            {tab === TAB_SPRITES  && <SpriteManager selectedSprite={selectedSprite} onSelectSprite={onSelectSprite} />}
             {tab === TAB_SETTINGS && <SettingsPanel />}
           </div>
         </div>
@@ -166,6 +170,7 @@ export default function Sidebar({ selectedType, onSelectType, isMobile = false, 
       <div style={S.tabs}>
         <button style={S.tab(tab === TAB_ENTITIES)} onClick={() => setTab(TAB_ENTITIES)}>Entities</button>
         <button style={S.tab(tab === TAB_RULES)}    onClick={() => setTab(TAB_RULES)}>Rules</button>
+        <button style={S.tab(tab === TAB_SPRITES)}  onClick={() => setTab(TAB_SPRITES)}>Sprites</button>
         <button style={S.tab(tab === TAB_SETTINGS)} onClick={() => setTab(TAB_SETTINGS)}>⚙</button>
       </div>
 
@@ -173,6 +178,7 @@ export default function Sidebar({ selectedType, onSelectType, isMobile = false, 
       <div style={S.content}>
         {tab === TAB_ENTITIES && <EntityManager selectedType={selectedType} onSelectType={onSelectType} />}
         {tab === TAB_RULES    && <RuleManager selectedType={selectedType} />}
+        {tab === TAB_SPRITES  && <SpriteManager selectedSprite={selectedSprite} onSelectSprite={onSelectSprite} />}
         {tab === TAB_SETTINGS && <SettingsPanel />}
       </div>
     </div>

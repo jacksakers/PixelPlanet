@@ -119,11 +119,42 @@ export const BLANK_RULE = {
 export const STORAGE_KEY = 'pixelplanet_config_v1';
 
 // ---------------------------------------------------------------------------
+// Sprite helpers
+// ---------------------------------------------------------------------------
+
+/** Generate a unique sprite id. */
+export function newSpriteId() {
+  return `sprite_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/** Create an empty cells array for a W×H sprite. */
+export function makeEmptySpriteCells(w, h) {
+  return new Array(w * h).fill(0);
+}
+
+/**
+ * Resize a sprite's cell grid, preserving content in the overlapping area.
+ * New cells default to 0 (transparent).
+ */
+export function resizeSpriteCells(cells, oldW, oldH, newW, newH) {
+  const next = makeEmptySpriteCells(newW, newH);
+  for (let row = 0; row < Math.min(oldH, newH); row++) {
+    for (let col = 0; col < Math.min(oldW, newW); col++) {
+      next[row * newW + col] = cells[row * oldW + col];
+    }
+  }
+  return next;
+}
+
+/** Default sprites shipped with the app. */
+export const DEFAULT_SPRITES = [];
+
+// ---------------------------------------------------------------------------
 // Load / save helpers
 // ---------------------------------------------------------------------------
-export function saveToStorage(entities, globalRules, entityRules) {
+export function saveToStorage(entities, globalRules, entityRules, sprites) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ entities, globalRules, entityRules }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ entities, globalRules, entityRules, sprites: sprites ?? [] }));
   } catch (_) { /* storage full / unavailable */ }
 }
 
@@ -280,7 +311,7 @@ export function loadPacks() {
  * Save the current config as a named pack.
  * Returns the new packs array.
  */
-export function savePack(name, entities, globalRules, entityRules) {
+export function savePack(name, entities, globalRules, entityRules, sprites) {
   const packs = loadPacks();
   const pack = {
     id:          `pack_${Date.now().toString(36)}`,
@@ -289,6 +320,7 @@ export function savePack(name, entities, globalRules, entityRules) {
     entities,
     globalRules,
     entityRules,
+    sprites:     sprites ?? [],
   };
   const next = [pack, ...packs];
   try { localStorage.setItem(PACKS_STORAGE_KEY, JSON.stringify(next)); } catch (_) {}

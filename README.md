@@ -98,6 +98,7 @@ pixel-planet/
 | **2** | Data-driven engine — JSON rule AST parser | ✅ **Done** |
 | **3** | Variables, lifetimes, boolean logic, Eat/Swap/MoveToward/MoveAway actions, Pack Manager, rule labels, JSON editors, rule reordering | ✅ **Done** |
 | **3.5** | OnClick & OnButtonPress triggers, score/game-loop actions, navigate tool mode, mobile D-pad controller, score overlay | ✅ **Done** |
+| **3.6** | Sprite Editor & Stamp tool, Pack Browser (community packs), named cloud shares | ✅ **Done** |
 | 4 | Chunking, multithreading, double buffering | 🔲 Planned |
 | 5 | Visual scripting UI (Scratch-like node editor) | 🔲 Planned |
 | 6 | Ecosystem sharing, serialisation, blueprints | 🔲 Planned |
@@ -165,10 +166,43 @@ See [QUICKSTART.md](QUICKSTART.md) for full step-by-step setup.
 
 ---
 
+## Sprite System
+
+Sprites are **multi-entity blueprints** — a W×H grid of entity placements that
+can be stamped onto the canvas as a single operation.
+
+### Sprite Editor
+
+Open the **Sprites** tab in the left sidebar.  Click **+ New Sprite** to launch the
+full-screen editor:
+
+| Control | Action |
+|---------|--------|
+| Resolution selector | Choose from 3×3 up to 32×32 |
+| `+` / `−` buttons | Zoom the cell grid in/out |
+| Entity palette (right / bottom on mobile) | Select which entity to paint |
+| Click / drag on grid | Paint cells |
+| Mirror H / Mirror V toggles | Mirror brushstrokes across the axis |
+| Flip H / Flip V buttons | Flip the entire sprite |
+| Clear | Erase all cells |
+| Save Sprite | Commit changes |
+
+### Stamping a Sprite
+
+After saving, click a sprite in the list to enter **Sprite Stamp** mode.
+A hint appears confirming the active sprite.  Click anywhere on the main
+canvas to stamp the sprite centered on that position.  Dragging paints a trail.
+
+Sprites also appear in the right-hand **PIXELS** panel for quick access.
+Click a sprite there (or in the sidebar list) to select/deselect it.
+Selecting any entity type automatically returns you to **Paint** mode.
+
+---
+
 ## Pack Manager
 
 The **⚙ Settings** tab contains the Pack Manager. Packs are named snapshots of your
-entire simulation config (all entities + all rules). They are stored locally in
+entire simulation config (all entities + all rules + all sprites). They are stored locally in
 `localStorage` under the key `pixelplanet_packs_v1`.
 
 | Action | How |
@@ -176,3 +210,41 @@ entire simulation config (all entities + all rules). They are stored locally in
 | Save | Type a name and press **Save** (or Enter). |
 | Load | Click **Load** on any row — replaces the current config instantly. |
 | Delete | Click **✕** then confirm. |
+
+---
+
+## Cloud Sharing & Pack Browser
+
+The **Cloud Sharing** section (inside the ⚙ Settings tab) lets you publish and
+browse packs stored in Supabase.
+
+### Sharing a pack
+
+1. (Optional) type a **title** in the title field.
+2. Click **☁ Share** — the full config (entities, rules, and sprites) is uploaded.
+3. A short code like `P-X7K9` is returned.  Share it with anyone.
+
+### Loading by code
+
+Enter an `X-XXXX` code and click **Load** to instantly replace your config.
+The URL is updated to `?pack=X-XXXX` so you can also share the full link.
+
+### Browsing community packs
+
+Click **▼ Browse Community Packs** to open the live pack gallery, sorted by
+newest first.  Click **Load** on any entry to import it immediately.
+
+#### Supabase schema
+
+```sql
+CREATE TABLE packs (
+  id          BIGSERIAL PRIMARY KEY,
+  short_code  TEXT UNIQUE NOT NULL,
+  title       TEXT DEFAULT 'Untitled Pack',
+  pack_data   JSONB NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+> **Note:** No accounts are required.  Anyone with the code can load a pack.
+> Moderation/deletion is done directly in the Supabase dashboard.

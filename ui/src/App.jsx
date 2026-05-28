@@ -34,13 +34,23 @@ function AppInner() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Tool mode: 'paint' | 'fill' | 'eyedropper' | 'none' (navigate)
+  // Tool mode: 'paint' | 'fill' | 'eyedropper' | 'none' (navigate) | 'sprite'
   const [toolMode, setToolMode]   = useState('paint');
   const toolModeRef               = useRef('paint');
   const handleSetToolMode = useCallback((mode) => {
     toolModeRef.current = mode;
     setToolMode(mode);
   }, []);
+
+  // Sprite selection for stamping
+  const [selectedSprite, setSelectedSprite] = useState(null);
+  const selectedSpriteRef = useRef(null);
+  const handleSelectSprite = useCallback((sprite) => {
+    selectedSpriteRef.current = sprite;
+    setSelectedSprite(sprite);
+    // Switch to sprite stamp mode when a sprite is selected, back to paint when deselected
+    handleSetToolMode(sprite ? 'sprite' : 'paint');
+  }, [handleSetToolMode]);
 
   // Engine interface (populated by SimCanvas when WASM loads)
   const engineRef = useRef(null);
@@ -90,7 +100,9 @@ function AppInner() {
   const handleSelectType = useCallback((type) => {
     selectedTypeRef.current = type;
     setSelectedType(type);
-    // switch back to paint tool when picking a type
+    // switch back to paint tool when picking a type (also deselect sprite)
+    selectedSpriteRef.current = null;
+    setSelectedSprite(null);
     handleSetToolMode('paint');
   }, [handleSetToolMode]);
 
@@ -172,6 +184,7 @@ function AppInner() {
           entities:    json.entities,
           globalRules: json.globalRules ?? [],
           entityRules: json.entityRules ?? {},
+          sprites:     json.sprites     ?? [],
         });
         // Clean the pack param from the URL so refreshing doesn't re-load.
         const url = new URL(window.location.href);
@@ -210,6 +223,7 @@ function AppInner() {
           <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
             <SimCanvas
               selectedTypeRef={selectedTypeRef}
+              selectedSpriteRef={selectedSpriteRef}
               brushSizeRef={brushSizeRef}
               isPausedRef={isPausedRef}
               tickRateRef={tickRateRef}
@@ -240,6 +254,8 @@ function AppInner() {
             onOpenEditor={() => setSidebarOpen(true)}
             toolMode={toolMode}
             onSetToolMode={handleSetToolMode}
+            selectedSprite={selectedSprite}
+            onSelectSprite={handleSelectSprite}
           />
 
           {/* Sidebar overlay (drawer) */}
@@ -247,6 +263,8 @@ function AppInner() {
             <Sidebar
               selectedType={selectedType}
               onSelectType={handleSelectType}
+              selectedSprite={selectedSprite}
+              onSelectSprite={handleSelectSprite}
               isMobile
               onClose={() => setSidebarOpen(false)}
             />
@@ -271,10 +289,16 @@ function AppInner() {
             onRedo={redo}
           />
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            <Sidebar selectedType={selectedType} onSelectType={handleSelectType} />
+            <Sidebar
+              selectedType={selectedType}
+              onSelectType={handleSelectType}
+              selectedSprite={selectedSprite}
+              onSelectSprite={handleSelectSprite}
+            />
             <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
               <SimCanvas
                 selectedTypeRef={selectedTypeRef}
+                selectedSpriteRef={selectedSpriteRef}
                 brushSizeRef={brushSizeRef}
                 isPausedRef={isPausedRef}
                 tickRateRef={tickRateRef}
@@ -299,6 +323,8 @@ function AppInner() {
               onBrushSize={handleBrushSize}
               toolMode={toolMode}
               onSetToolMode={handleSetToolMode}
+              selectedSprite={selectedSprite}
+              onSelectSprite={handleSelectSprite}
             />
           </div>
         </>

@@ -1,6 +1,6 @@
 # PixelPlanet — Entity & Rule Schema Reference
 
-> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-26 17:52 UTC.
+> **Auto-generated** by `scripts/generate-entity-schema.js` on 2026-05-28 02:45 UTC.
 > Re-run to pick up new condition types, actions, or triggers added to the codebase.
 
 ## Source file status
@@ -32,15 +32,74 @@ is entirely doable by composing the primitives below.
 
 ## Top-level structure
 
+The full configuration blob (used for `engine_load_config()` and for pack
+storage/sharing) contains:
+
 ```json
 {
   "entities": "[ <EntityDef>, ... ]",
   "globalRules": "[ <Rule>, ... ]  // apply to ALL non-static pixels",
   "entityRules": {
     "<entityId as string>": "[ <Rule>, ... ]  // apply only to pixels with that ID"
-  }
+  },
+  "sprites": "[ <Sprite>, ... ]  // optional; UI-only blueprints (not sent to engine)"
 }
 ```
+
+---
+
+## Sprite definition
+
+Sprites are **multi-entity blueprints** stored in the UI layer. They are **not**
+sent to the WASM engine but are serialised alongside entities/rules in local
+saves, localStorage packs, and cloud-shared packs.
+
+```json
+{
+  "id": "string  // unique identifier, e.g. 'sprite_1abc2def'",
+  "name": "string  // display name, e.g. 'Bowling Ball'",
+  "width": "number  // grid columns (1–32)",
+  "height": "number  // grid rows    (1–32)",
+  "cells": "number[]  // flat row-major array of entity IDs; 0 = transparent/empty"
+}
+```
+
+**`cells` encoding:** index `row × width + col` holds the entity ID for that
+cell. `0` means transparent — the engine cell beneath is left unchanged when
+the sprite is stamped onto the canvas.
+
+**Resolution presets:** 3×3, 5×5, 8×8, 10×10, 16×16, 32×32.
+
+**Example — 3×3 diamond:**
+
+```json
+{
+  "id": "sprite_abc123",
+  "name": "Diamond",
+  "width": 3,
+  "height": 3,
+  "cells": [
+    0,
+    1,
+    0,
+    1,
+    2,
+    1,
+    0,
+    1,
+    0
+  ]
+}
+```
+
+Entity `1` paints the outline; entity `2` fills the centre.
+
+**Editing sprites:** Open the **Sprites** tab in the left sidebar → **+ New Sprite**.
+The editor supports pointer/touch painting, zoom (cell pixel size), H/V mirror
+painting, and resolution change that preserves existing content. Sprites also
+appear in the right-hand PIXELS palette and the MobileHUD swatch bar. Click a
+sprite to enter **Sprite Stamp** mode; click the canvas to stamp it centred on
+that position.
 
 ---
 

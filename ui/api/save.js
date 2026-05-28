@@ -39,12 +39,22 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Server misconfiguration: Supabase env vars not set' });
   }
 
-  // Parse body — Vercel provides it already parsed for JSON content-type.
   let pack_data;
+  let title = 'Untitled Pack';
   try {
-    pack_data = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    if (!pack_data || typeof pack_data !== 'object' || Array.isArray(pack_data)) {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
       throw new Error('Body must be a JSON object');
+    }
+    // Accept { title, pack } wrapper OR raw pack at top level
+    if (body.pack && typeof body.pack === 'object') {
+      pack_data = body.pack;
+      title     = typeof body.title === 'string' && body.title.trim()
+                  ? body.title.trim().slice(0, 80)
+                  : 'Untitled Pack';
+    } else {
+      pack_data = body;
+      title     = 'Untitled Pack';
     }
   } catch (err) {
     return res.status(400).json({ error: `Invalid request body: ${err.message}` });
@@ -60,7 +70,7 @@ module.exports = async function handler(req, res) {
 
     const { error } = await supabase
       .from('packs')
-      .insert({ short_code, pack_data });
+      .insert({ short_code, pack_data, title });
 
     if (!error) {
       // Success — return the code to the client.

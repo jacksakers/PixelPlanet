@@ -111,7 +111,7 @@ function fmtDate(ts) {
 }
 
 export default function PackManager() {
-  const { entities, globalRules, entityRules, importConfig } = useSimContext();
+  const { entities, globalRules, entityRules, sprites, importConfig } = useSimContext();
 
   const [packs, setPacks]       = useState(() => loadPacks());
   const [newName, setNewName]   = useState('');
@@ -120,7 +120,7 @@ export default function PackManager() {
 
   function handleSave() {
     const name = newName.trim() || `Pack ${packs.length + 1}`;
-    const next = savePack(name, entities, globalRules, entityRules);
+    const next = savePack(name, entities, globalRules, entityRules, sprites);
     setPacks(next);
     setNewName('');
     setStatus({ ok: true, msg: `Saved "${name}".` });
@@ -131,6 +131,7 @@ export default function PackManager() {
       entities:    pack.entities,
       globalRules: pack.globalRules,
       entityRules: pack.entityRules,
+      sprites:     pack.sprites ?? [],
     });
     setStatus({ ok: true, msg: `Loaded "${pack.name}".` });
   }

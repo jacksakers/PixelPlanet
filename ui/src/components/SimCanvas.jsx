@@ -31,18 +31,19 @@ const BRUSH_RADIUS = 3;
 /**
  * SimCanvas
  * Props:
- *   selectedTypeRef  - React.MutableRefObject<number>
- *   brushSizeRef     - React.MutableRefObject<number>  (radius in cells)
- *   isPausedRef      - React.MutableRefObject<boolean> (pause simulation)
- *   tickRateRef      - React.MutableRefObject<number>  (ticks per frame, e.g. 0.5, 1, 2, 4)
- *   clearCanvasRef   - React.MutableRefObject<function|null> (set to clear fn by this component)
- *   stepCanvasRef    - React.MutableRefObject<function|null> (set to step fn — advance one tick)
- *   exportCanvasRef  - React.MutableRefObject<function|null> (set to export fn — PNG download)
- *   toolModeRef      - React.MutableRefObject<'paint'|'fill'|'eyedropper'|'none'> (active tool mode)
- *   onSelectType     - (type: number) => void  (eyedropper right-click callback)
- *   engineRef        - React.MutableRefObject<object|null>  (receives engine interface when ready)
+ *   selectedTypeRef   - React.MutableRefObject<number>
+ *   selectedSpriteRef - React.MutableRefObject<Sprite|null>  (active sprite for stamping)
+ *   brushSizeRef      - React.MutableRefObject<number>  (radius in cells)
+ *   isPausedRef       - React.MutableRefObject<boolean> (pause simulation)
+ *   tickRateRef       - React.MutableRefObject<number>  (ticks per frame, e.g. 0.5, 1, 2, 4)
+ *   clearCanvasRef    - React.MutableRefObject<function|null> (set to clear fn by this component)
+ *   stepCanvasRef     - React.MutableRefObject<function|null> (set to step fn — advance one tick)
+ *   exportCanvasRef   - React.MutableRefObject<function|null> (set to export fn — PNG download)
+ *   toolModeRef       - React.MutableRefObject<'paint'|'fill'|'eyedropper'|'none'|'sprite'> (active tool mode)
+ *   onSelectType      - (type: number) => void  (eyedropper right-click callback)
+ *   engineRef         - React.MutableRefObject<object|null>  (receives engine interface when ready)
  */
-export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, tickRateRef, clearCanvasRef, stepCanvasRef, exportCanvasRef, toolModeRef, onSelectType, engineRef }) {
+export default function SimCanvas({ selectedTypeRef, selectedSpriteRef, brushSizeRef, isPausedRef, tickRateRef, clearCanvasRef, stepCanvasRef, exportCanvasRef, toolModeRef, onSelectType, engineRef }) {
   const canvasRef       = useRef(null);
   const containerRef    = useRef(null);
   const modRef          = useRef(null);
@@ -179,6 +180,19 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
                 for (let dx = -radius; dx <= radius; dx++) {
                   if (dx * dx + dy * dy <= radius * radius) {
                     mod._engine_send_click(x + dx, y + dy);
+                  }
+                }
+              }
+            } else if (toolMode === 'sprite') {
+              // Sprite stamp mode: place the selected sprite centered on cursor
+              const sprite = selectedSpriteRef?.current;
+              if (sprite) {
+                const hw = Math.floor(sprite.width  / 2);
+                const hh = Math.floor(sprite.height / 2);
+                for (let row = 0; row < sprite.height; row++) {
+                  for (let col = 0; col < sprite.width; col++) {
+                    const id = sprite.cells[row * sprite.width + col];
+                    if (id) engineSetPixel(mod, x + col - hw, y + row - hh, id);
                   }
                 }
               }
@@ -464,6 +478,7 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
       mouseRef.current = { down: true, ...pos };
       return;
     }
+    // 'paint' or 'sprite' — RAF loop handles the drawing each frame
     mouseRef.current = { down: true, ...pos };
   }, [toGrid, toolModeRef, onSelectType, floodFill, selectedTypeRef]);
 
@@ -494,7 +509,7 @@ export default function SimCanvas({ selectedTypeRef, brushSizeRef, isPausedRef, 
       setZoomDisplay(Math.round(newZoom * 100) / 100);
       return;
     }
-    if (e.touches.length === 1 && (toolModeRef?.current ?? 'paint') === 'paint') {
+    if (e.touches.length === 1 && ['paint', 'sprite'].includes(toolModeRef?.current ?? 'paint')) {
       mouseRef.current = { down: true, ...toGrid(e.touches[0]) };
     }
   }, [toGrid, applyTransform, clampPan, toolModeRef]);
