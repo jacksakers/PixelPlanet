@@ -29,6 +29,8 @@ const S = {
     borderRadius: 8,
     border: '1px solid #2a2a3a',
     marginBottom: 10,
+    maxHeight: '40vh',
+    overflowY: 'auto',
   },
   title: {
     fontSize: '0.72rem',
