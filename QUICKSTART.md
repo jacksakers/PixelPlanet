@@ -58,6 +58,12 @@ cd C:\path\to\PixelPlanet
 .\scripts\dev.ps1
 ```
 
+OR on linux Run this:
+
+chmod +x engine/build.sh
+source source "/home/jack/src/emsdk/emsdk_env.sh" # Activate Emscripten
+./engine/build.sh
+
 This script:
 1. Compiles `engine/src/main.cpp` → `ui/public/wasm/pixel_planet.{js,wasm}`
 2. Runs `npm install` in `ui/` (first time only)
