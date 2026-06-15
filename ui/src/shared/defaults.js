@@ -43,12 +43,6 @@ export const DEFAULT_ENTITIES = [
 // Default global rules
 // ---------------------------------------------------------------------------
 export const DEFAULT_GLOBAL_RULES = [
-  {
-    id: 'global_gravity',
-    trigger: 'OnTick',
-    condition: { type: 'NeighborCheck', dir: 'down', target: 'EMPTY' },
-    actions: [{ type: 'Move', dir: 'down' }],
-  },
 ];
 
 // ---------------------------------------------------------------------------
